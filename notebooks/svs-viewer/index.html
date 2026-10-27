@@ -226,6 +226,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 
 let items = [], total = 0, cur = null, curInfo = null, grid = false;
 const PAGE = 300;
+const MAX_MAG = 200;
 const caseView = new URLSearchParams(location.search).get('case-view') === '1';
 let activeCase = null;
 if (caseView) document.body.classList.add('case-view');
@@ -233,7 +234,7 @@ if (caseView) document.body.classList.add('case-view');
 const viewer = OpenSeadragon({
   element: $('#viewer'), prefixUrl: 'https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/images/',
   showNavigator: true, navigatorPosition: 'TOP_LEFT', showNavigationControl: false,
-  maxZoomPixelRatio: 2, animationTime: 0.4, timeout: 60000, imageLoaderLimit: 8,
+  maxZoomPixelRatio: MAX_MAG / 40, animationTime: 0.4, timeout: 60000, imageLoaderLimit: 8,
   gestureSettingsMouse: { clickToZoom: false, dblClickToZoom: true },
 });
 viewer.addHandler('open', () => { $('#empty').hidden = true; $('#hud').hidden = false; $('#mag').hidden = false; updateScale(); });
@@ -264,9 +265,10 @@ new OpenSeadragon.MouseTracker({ element: viewer.element, moveHandler: e => {
 }});
 
 function setMag(objective) {
+  viewer.viewport.maxZoomPixelRatio = MAX_MAG / (objective || 40);
   const m = $('#mag'); m.innerHTML = '';
   const fit = document.createElement('button'); fit.textContent = 'Fit'; fit.onclick = () => viewer.viewport.goHome(); m.append(fit);
-  [1.25, 5, 10, 20, 40].filter(x => x <= (objective || 40)).forEach(x => {
+  [1.25, 5, 10, 20, 40, 100, MAX_MAG].forEach(x => {
     const b = document.createElement('button'); b.textContent = x + '×';
     b.onclick = () => { // x× means image px per screen px = objective/x
       const item = viewer.world.getItemAt(0);

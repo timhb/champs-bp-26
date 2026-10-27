@@ -1,0 +1,11 @@
+# Stored weights and the source pipeline's Virchow2 extraction settings.
+data_root = "/sc/projects/sci-lippert/champs"
+models_root = "/sc/projects/sci-lippert/champs/models/findings_champion"
+encoder = "virchow2"
+magnification = 20
+tile_size = 224
+segmenter = "hest"
+seg_conf_thresh = 0.5
+
+feature_index = "/sc/projects/sci-lippert/champs/manifest/feature_index.csv"
+slide_registry = "/sc/projects/sci-lippert/champs/reports/derived/slide_labels.parquet"

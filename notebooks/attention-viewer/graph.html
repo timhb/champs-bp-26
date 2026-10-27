@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Slide graph · CHAMPS</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/assets/quantco-theme.css">
+  <link rel="stylesheet" href="/assets/quantco-primitives.css">
+  <link rel="stylesheet" href="/assets/viewer.css">
+  <link rel="stylesheet" href="/assets/graph.css">
+  <script defer src="/assets/grouped-layout.js"></script>
+  <script defer src="/assets/associations.js"></script>
+  <script defer src="/assets/graph.js"></script>
+</head>
+<body class="qc-ui">
+  <header class="app-header"><a class="brand" href="/"><strong>CHAMPS</strong><span class="brand-divider"></span><span>Attention viewer</span></a><nav class="view-nav" aria-label="Viewer views"><a href="/">Slide attention</a><a href="/graph" aria-current="page">Slide graph</a></nav></header>
+  <main>
+    <div class="page-heading"><div><h1>Slide graph</h1><p class="graph-description">Every slide, connected by its nearest neighbors.</p></div><span id="graph-count" class="tag primary-tag">Loading export…</span></div>
+    <form id="graph-controls" class="panel graph-controls">
+      <div><label for="graph-organ">Organ</label><select id="graph-organ" class="qc-input" disabled></select></div>
+      <div class="branch-field"><label for="graph-branch">Finding branch</label><select id="graph-branch" class="qc-input" disabled></select></div>
+      <div><label for="graph-projection">Projection</label><select id="graph-projection" class="qc-input"><option value="pca">PCA</option><option value="tsne">t-SNE</option><option value="umap">UMAP</option><option value="grouped">Grouped squares</option></select></div>
+      <div id="graph-group-field" hidden><label for="graph-group">Group by</label><select id="graph-group" class="qc-input"><option value="cluster">Cluster</option><option value="site">Site</option><option value="sex">Sex</option><option value="age_group">Age group</option></select></div>
+      <div><label for="graph-k">Neighbors (k)</label><input id="graph-k" class="qc-input" type="number" min="1" step="1" value="10" required aria-describedby="k-help"></div>
+      <button id="apply-k" class="qc-button" type="submit" disabled>Apply k</button>
+      <button id="graph-export" class="qc-button" data-variant="outline" type="button" disabled>Export mapping</button>
+    </form>
+    <p id="group-help" class="graph-help" role="status" hidden></p>
+    <p id="k-help" class="graph-help">k counts outgoing neighbors in the original 512-dimensional embedding, excluding the slide itself.</p>
+    <form id="cluster-controls" class="panel graph-controls cluster-controls">
+      <div><label for="cluster-method">Clustering</label><select id="cluster-method" class="qc-input"><option value="none">None</option><option value="leiden" selected>Leiden</option><option value="hdbscan">HDBSCAN</option><option value="kmeans">K-means</option></select></div>
+      <div data-method="leiden"><label for="cluster-k">Clustering neighbors</label><input id="cluster-k" class="qc-input" type="number" min="1" step="1" value="15" required></div>
+      <div data-method="leiden"><label for="cluster-resolution">Resolution</label><input id="cluster-resolution" class="qc-input" type="number" min="0.001" step="any" value="1" required></div>
+      <div data-method="hdbscan" hidden><label for="cluster-min-size">Minimum cluster size</label><input id="cluster-min-size" class="qc-input" type="number" min="2" step="1" value="50" required disabled></div>
+      <div data-method="hdbscan" hidden><label for="cluster-min-samples">Minimum samples</label><input id="cluster-min-samples" class="qc-input" type="number" min="1" step="1" value="10" required disabled></div>
+      <div data-method="kmeans" hidden><label for="cluster-count">Number of clusters</label><input id="cluster-count" class="qc-input" type="number" min="2" step="1" value="12" required disabled></div>
+      <button id="cluster-run" class="qc-button" type="submit" disabled>Run clustering</button>
+    </form>
+    <p id="cluster-status" class="graph-help" role="status" aria-live="polite">Clustering uses the branch embeddings and stays fixed when you change projection or metadata colors. Leiden has its own neighbor setting.</p>
+    <div class="panel graph-controls overlay-controls">
+      <div><label for="graph-color">Color by</label><select id="graph-color" class="qc-input"><option value="cluster">Cluster</option><option value="site">Site</option><option value="age_months">Age (approx. months)</option><option value="sex">Sex</option><option value="age_group">Age group</option></select></div>
+      <div><label for="age-min">Minimum age (months)</label><input id="age-min" class="qc-input" type="number" min="0" step="any" placeholder="Any"></div>
+      <div><label for="age-max">Maximum age (months)</label><input id="age-max" class="qc-input" type="number" min="0" step="any" placeholder="Any"></div>
+      <label class="overlay-check"><input id="age-include-missing" type="checkbox" checked> Include unknown age</label>
+      <label class="overlay-check"><input id="cluster-labels" type="checkbox" checked> Group / cluster labels</label>
+      <button id="overlay-reset" class="qc-button" data-variant="outline" type="button">Clear filters</button>
+    </div>
+    <p id="overlay-status" class="graph-help" role="status">Age metadata is loading.</p>
+    <div class="graph-layout">
+      <section class="panel graph-panel" aria-label="Slide embedding graph">
+        <div class="panel-heading"><h2 id="projection-title">PCA projection</h2><button id="graph-fit" type="button" class="qc-button" data-variant="outline">Reset view</button></div>
+        <div class="graph-stage"><canvas id="graph-canvas" tabindex="0" role="img" aria-label="Slide graph. Scroll to zoom, drag to pan, click a point to inspect. Use slide search for keyboard selection."></canvas><div id="graph-tooltip" hidden></div><div id="graph-loading" role="status">Loading slide embeddings…</div></div>
+        <div class="graph-footer"><span id="graph-edge-status">Waiting for graph…</span><label><input id="graph-show-edges" type="checkbox" checked> <span id="graph-edge-label">Show links</span></label><span>Scroll to zoom · Drag to pan</span></div>
+        <div id="graph-legend" class="graph-legend" aria-label="Sites"></div>
+      </section>
+      <aside class="panel graph-inspector" aria-label="Slide and nearest neighbors">
+        <div class="panel-heading"><h2>Explore a slide</h2></div>
+        <div class="graph-search"><label for="graph-search">Find slide or case</label><input id="graph-search" type="search" class="qc-input" placeholder="Search all mapped slides…" autocomplete="off"><div id="graph-search-results"></div></div>
+        <div id="graph-selection"><p class="list-message">Click a point or search for a slide to inspect its neighbors and open its attention view.</p></div>
+        <div id="neighbor-heading" hidden class="panel-heading"><h2>Nearest neighbors</h2><span id="neighbor-count" class="count"></span></div>
+        <div id="graph-neighbors"></div>
+        <div id="neighbor-pagination" hidden class="pagination"><button id="neighbor-prev" class="qc-button" data-variant="outline">Previous</button><span id="neighbor-page"></span><button id="neighbor-next" class="qc-button" data-variant="outline">Next</button></div>
+      </aside>
+    </div>
+    <p id="graph-status" class="app-status" role="status" aria-live="polite">Reading the completed CLAM-MB export…</p>
+    <section id="association-panel" class="panel association-panel" aria-label="Property and cluster associations">
+      <div class="panel-heading"><h2>Property associations</h2><button id="association-export" type="button" class="qc-button" data-variant="outline" disabled>Export analysis</button></div>
+      <div class="graph-controls association-controls">
+        <div><label for="association-property">Property</label><select id="association-property" class="qc-input"><option value="age_months">Age (approx. months)</option><option value="sex">Sex</option><option value="age_group">Age group</option><option value="site">Site</option></select></div>
+        <div><label for="association-site">Analysis site</label><select id="association-site" class="qc-input"><option value="">All sites</option></select></div>
+        <label class="overlay-check"><input id="association-noise" type="checkbox"> Include noise / unassigned patients</label>
+        <button id="association-color" type="button" class="qc-button" data-variant="outline" disabled>Color points by property</button>
+      </div>
+      <p id="association-status" class="graph-help summary-note" role="status" aria-live="polite">Run clustering to compare properties with cluster membership.</p>
+      <div id="association-metrics" class="association-metrics"></div>
+      <div id="association-chart" class="association-chart"></div>
+      <details class="association-details"><summary>How to read these results</summary><p id="association-notes" class="graph-help"></p><p class="graph-help">These are descriptive associations, not causal effects. η² describes differences in means and can miss other distributional differences. AMI corrects for chance agreement; Cramér’s V and η² are unadjusted effect sizes. Small clusters can show unstable enrichment. No property is used to refit clusters.</p></details>
+    </section>
+    <section class="panel cluster-summary-panel" aria-label="Cluster summaries"><div class="panel-heading"><h2>Cluster summaries</h2><span id="cluster-total" class="count">—</span></div><p class="graph-help summary-note">Patient age summaries count each mapped patient once per cluster. Site counts describe slides. Select a cluster to highlight it; overlays and filters do not refit clusters.</p><div id="cluster-summaries"><p class="list-message">Run a clustering method to compare groups.</p></div><p id="age-provenance" class="graph-help summary-note"></p></section>
+    <details class="panel graph-provenance"><summary>Representation &amp; projection details</summary><p>Each point is one completed slide, mapped by organ and slide ID to the attention viewer. Finding branches and organs retain separate embedding spaces. Vectors are L2 normalized; directed kNN links use exact cosine distance with stable tie ordering. PCA, t-SNE, UMAP and grouped squares change positions, not neighbor identities. Grouped squares pack each group into a compact grid with small gaps; square areas reflect slide counts. Grouping is independent of coloring. Positions within and between squares do not encode similarity.</p><p>t-SNE uses up to 50 PCA components, PCA initialization and a fixed seed. Distances between distant t-SNE clusters do not measure slide similarity. UMAP uses cosine distance on normalized embeddings, PCA initialization and a fixed seed. Its neighbor count and minimum distance are set in the viewer configuration. Distances between distant UMAP clusters do not measure slide similarity. These supervised representations include training slides.</p><p id="graph-provenance"></p></details>
+  </main>
+</body>
+</html>

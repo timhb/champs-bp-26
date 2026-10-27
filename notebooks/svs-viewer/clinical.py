@@ -12,9 +12,15 @@ import re
 import threading
 
 import pandas as pd
-from pathology import CONDITIONS, slide_finding_index
-from reports import REPORT_FIELDS, format_mits_report
-from reports import clean_report_text as _clean_text
+
+if __package__:
+    from .pathology import CONDITIONS, slide_finding_index
+    from .reports import REPORT_FIELDS, format_mits_report
+    from .reports import clean_report_text as _clean_text
+else:
+    from pathology import CONDITIONS, slide_finding_index
+    from reports import REPORT_FIELDS, format_mits_report
+    from reports import clean_report_text as _clean_text
 
 PATHS = {}  # set by configure(): root, l2 (Level-2 tables), reports
 state = {"ready": False, "error": None}

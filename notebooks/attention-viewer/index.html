@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Slide attention · CHAMPS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231e1b4b'/%3E%3Cpath d='M8 8h7v7H8zm9 0h7v7h-7zM8 17h7v7H8zm9 0h7v7h-7z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/assets/quantco-theme.css">
+  <link rel="stylesheet" href="/assets/quantco-primitives.css">
+  <link rel="stylesheet" href="/assets/viewer.css">
+  <script defer src="/vendor/openseadragon.min.js"></script>
+  <script defer src="/assets/patient.js"></script>
+  <script defer src="/assets/viewer.js"></script>
+</head>
+<body class="qc-ui">
+  <svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+    <symbol id="layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="fit" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path d="M8 8h8v8H8z"/></symbol>
+    <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  </defs></svg>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="CHAMPS attention viewer home"><span class="brand-icon"><svg><use href="#layers"/></svg></span><strong>CHAMPS</strong><span class="brand-divider"></span><span>Attention viewer</span></a>
+    <nav class="view-nav" aria-label="Viewer views"><a href="/" aria-current="page">Slide attention</a><a href="/graph">Slide graph</a></nav>
+  </header>
+  <main>
+    <div class="page-heading"><div><h1>Slide attention</h1></div><div class="model-badges"><span class="tag">Virchow2</span><svg class="flow-arrow"><use href="#arrow"/></svg><span class="tag primary-tag">CLAM-MB</span></div></div>
+    <div class="workspace">
+      <aside class="catalog panel" aria-label="Slide library">
+        <div class="panel-heading"><h2>Slide library</h2><span id="catalog-count" class="count">—</span></div>
+        <div class="filters">
+          <label class="sr-only" for="search-input">Search slide or case</label><div class="search-field"><svg><use href="#search"/></svg><input class="qc-input" id="search-input" type="search" placeholder="Search slide or case…" autocomplete="off"></div>
+          <div class="filter-row"><div><label for="organ-filter">Organ</label><select class="qc-input" id="organ-filter"><option value="lung">Lung</option><option value="liver">Liver</option><option value="">All organs</option></select></div><div><label for="site-filter">Site</label><select class="qc-input" id="site-filter"><option value="">All sites</option></select></div></div>
+          <div class="condition-field"><label for="condition-filter">Condition</label><select class="qc-input" id="condition-filter" aria-describedby="condition-filter-note" disabled><option value="">All conditions</option></select><p id="condition-filter-note">Reference findings for predicted conditions</p></div>
+        </div>
+        <div id="slide-list" class="slide-list" aria-label="Matching slides" aria-busy="true"><p class="list-message">Loading slide library…</p></div>
+        <div class="pagination"><button class="qc-button" data-variant="outline" id="previous-page" disabled>Previous</button><span id="page-label" aria-live="polite">—</span><button class="qc-button" data-variant="outline" id="next-page" disabled>Next</button></div>
+      </aside>
+      <div class="slide-workspace">
+      <section class="image-panel panel" aria-label="Whole-slide image and attention">
+        <div class="slide-heading"><div class="slide-title"><span id="organ-label" class="eyebrow">WHOLE-SLIDE IMAGE</span><h2 id="slide-title">Choose a slide</h2><p id="slide-subtitle">Select a slide from the library to begin.</p></div><button class="qc-button" data-variant="outline" id="export-button" disabled><svg><use href="#download"/></svg>Export CSV</button></div>
+        <div class="image-toolbar"><div class="toolbar-label"><span class="status-dot"></span><span id="active-branch-label">Attention overlay</span><select id="branch-select" class="qc-input" aria-label="Finding branch" disabled><option>Loading branches…</option></select></div></div>
+        <div class="viewer-stage">
+          <nav id="magnification-controls" aria-label="Magnification presets" hidden></nav>
+          <div id="slide-viewer" aria-label="Zoomable slide. Scroll to zoom and drag to pan." tabindex="0"></div>
+          <canvas id="attention-canvas" aria-hidden="true"></canvas>
+          <div id="viewer-message" class="viewer-message" role="status"><span class="empty-symbol"><svg><use href="#layers"/></svg></span><strong>Your slide, in focus</strong><span>Choose a slide to explore its attention.</span></div>
+          <div id="tile-tooltip" hidden></div>
+          <div class="stage-caption"><div id="image-scale"><span id="scale-text">—</span><div id="scale-bar"></div></div><span>Scroll to zoom · Drag to pan</span></div>
+        </div>
+        <div class="overlay-settings">
+          <div class="setting-header"><label class="checkbox-label"><input type="checkbox" id="overlay-visible" checked> Show attention</label><span class="key-hint">H to toggle</span></div>
+          <div class="setting-grid"><div><label for="opacity">Opacity <output id="opacity-value">60%</output></label><input type="range" id="opacity" min="0" max="100" value="60"></div><div><label for="threshold">Minimum percentile <output id="threshold-value">0th</output></label><input type="range" id="threshold" min="0" max="99" value="0"></div></div>
+          <div class="legend"><span>Lower attention</span><div class="color-ramp" aria-label="Sequential heatmap from deep purple to bright yellow"></div><span>Higher attention</span></div><p class="legend-note">Percentile within the selected slide and branch. Uncolored regions have no displayed tile.</p>
+        </div>
+        <div class="image-footer"><span id="tile-stat">— tiles</span><span id="location-stat">Full slide · Level-0 coordinates</span></div>
+      </section>
+      <section class="panel case-panel" aria-label="Case information and patient data">
+        <div class="panel-heading"><h2>Case &amp; patient</h2><span id="case-scope" class="case-scope">No slide selected</span></div>
+        <div id="patient-summary" class="patient-summary" hidden></div>
+        <div class="case-tabs" role="tablist" aria-label="Case information views">
+          <button type="button" id="organ-context-tab" role="tab" aria-selected="true" aria-controls="organ-context-panel" tabindex="0">Organ context</button>
+          <button type="button" id="all-patient-tab" role="tab" aria-selected="false" aria-controls="all-patient-panel" tabindex="-1">All patient data</button>
+        </div>
+        <div id="patient-status" class="patient-status" role="status" aria-live="polite">Select a slide to load its patient data.</div>
+        <div id="organ-context-panel" role="tabpanel" aria-labelledby="organ-context-tab" class="case-content"></div>
+        <div id="all-patient-panel" role="tabpanel" aria-labelledby="all-patient-tab" class="case-content" hidden>
+          <div class="patient-search"><label for="patient-search">Search all recorded patient data</label><input id="patient-search" class="qc-input" type="search" placeholder="Search fields, findings, tests or codes…" autocomplete="off"></div>
+          <div id="all-patient-content"></div>
+        </div>
+      </section>
+      </div>
+      <aside class="findings-panel" aria-label="Finding branches and top tiles">
+        <section class="panel reference-panel"><div class="panel-heading"><h2>Reference findings</h2><span id="reference-count" class="count">—</span></div><div id="reference-findings"><p class="list-message">Select a slide to see its reference findings.</p></div></section>
+        <section class="panel branches-panel"><div class="panel-heading"><h2>Finding branches</h2><span id="branch-count" class="count">—</span></div><div class="branch-intro"><span>Finding · reference label</span><span title="Sigmoid of the slide logit; not a calibrated probability.">Slide score</span></div><div id="branch-list" class="branch-list"><p class="list-message">Branches appear after loading a slide.</p></div><p class="interpretation">Attention shows where a branch pools information. It is not a tile-level prediction.</p></section>
+        <section class="panel top-panel"><div class="panel-heading"><h2>Highest attention</h2><span class="tiny-note">Click to locate</span></div><div id="top-tiles" class="top-tiles"><p class="list-message">The selected branch’s top tiles will appear here.</p></div></section>
+        <details class="panel provenance"><summary>Model &amp; slide details</summary><dl id="model-details"><dt>Encoder</dt><dd>Virchow2</dd><dt>Aggregator</dt><dd>CLAM-MB</dd></dl></details>
+      </aside>
+    </div>
+    <p id="app-status" class="app-status" role="status" aria-live="polite">Connecting to local slide library…</p>
+  </main>
+</body>
+</html>
