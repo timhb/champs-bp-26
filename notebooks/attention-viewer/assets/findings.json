@@ -1,0 +1,125 @@
+{
+  "cholestasis": {
+    "description": "Bile retained in liver tissue because bile formation or drainage is impaired.",
+    "histology": "Look for yellow-green to brown bile pigment in hepatocytes and plugs within the tiny canaliculi between them.",
+    "context": "This is a pattern of bile retention; it does not identify the cause of obstruction or liver injury.",
+    "source": "https://webpath.med.utah.edu/LIVEHTML/LIVER020.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "extramedullary_hematopoiesis": {
+    "description": "Blood-cell production outside the bone marrow, here within the liver.",
+    "histology": "Look for groups of nucleated red-cell precursors, myeloid precursors and occasional large megakaryocytes between hepatocytes or in sinusoids.",
+    "context": "Interpret with age: hepatic blood-cell production can persist in fetal and early neonatal life.",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7380837/",
+    "source_name": "BMJ Case Reports · liver histology",
+    "additional_source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6861135/",
+    "additional_source_name": "Nature · human fetal liver"
+  },
+  "hemozoin_pigment": {
+    "description": "Pigment produced as malaria parasites digest haemoglobin.",
+    "histology": "Look for coarse brown to black granules within enlarged Kupffer cells along the liver sinusoids.",
+    "context": "Pigment supports malaria exposure, but does not by itself establish active infection; correlate with parasite testing.",
+    "source": "https://doi.org/10.1186/1475-2875-13-106",
+    "source_name": "Malaria Journal · human liver histology"
+  },
+  "hepatic_inflammation_portal": {
+    "description": "Inflammatory cells concentrated in the liver's portal tracts.",
+    "histology": "Find a portal vein branch, artery and bile duct, then look for an expanded cuff or cluster of inflammatory cells around these structures.",
+    "context": "The label describes the location of inflammation; it does not establish a specific infection or hepatitis subtype.",
+    "source": "https://doi.org/10.1186/1475-2875-13-106",
+    "source_name": "Malaria Journal · portal-tract histology"
+  },
+  "hepatic_inflammation_sinusoidal": {
+    "description": "Inflammatory cells within the small vascular channels between liver-cell plates.",
+    "histology": "Look for increased nucleated inflammatory cells along sinusoids between hepatocytes, rather than a predominantly portal-tract infiltrate.",
+    "context": "This is a distribution pattern, not a specific cause. Distinguish inflammatory cells from blood-cell precursors in hematopoiesis.",
+    "source": "https://wellcomecollection.org/works/tnfkxwjy",
+    "source_name": "Wellcome Collection · liver histology"
+  },
+  "liver_congestion": {
+    "description": "Excess blood within the liver's vascular channels.",
+    "histology": "Look for dilated sinusoids packed with red cells, often most prominent around central veins.",
+    "context": "The appearance describes congestion; clinical context is needed to identify its cause.",
+    "source": "https://webpath.med.utah.edu/LIVEHTML/LIVER042.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "steatosis": {
+    "description": "Fat accumulation inside hepatocytes.",
+    "histology": "Look for clear, round vacuoles in hepatocyte cytoplasm. Large droplets may displace the nucleus toward the cell edge.",
+    "context": "The label describes fat, not its cause or the presence of steatohepatitis.",
+    "source": "https://webpath.med.utah.edu/LIVEHTML/LIVER006.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "aspiration_meconium": {
+    "description": "Meconium-containing material inhaled into the fetal or newborn lung.",
+    "histology": "Look for rounded clumps of meconium within airspaces, often accompanied by flat fetal squamous cells.",
+    "context": "Squamous cells alone are not evidence that meconium is present.",
+    "source": "https://webpath.med.utah.edu/PEDHTML/PED056.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "aspiration_squames": {
+    "description": "Fetal skin cells from amniotic fluid present in lung airspaces.",
+    "histology": "Look for thin, flat, pink squamous flakes within bronchioles or alveolar spaces; they may occur beside meconium.",
+    "context": "This records aspirated material; squames alone do not establish clinically significant aspiration injury.",
+    "source": "https://webpath.med.utah.edu/PEDHTML/PED056.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "bronchopneumonia": {
+    "description": "Patchy acute inflammation involving small airways and nearby alveoli, commonly associated with infection.",
+    "histology": "Look for clusters of neutrophils filling bronchioles and surrounding alveoli, creating patchy areas of consolidation.",
+    "context": "The pattern does not identify a particular organism; microbiology or additional stains may be needed.",
+    "source": "https://webpath.med.utah.edu/INFLHTML/INFL022.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "fibrin": {
+    "description": "Clotting protein deposited in lung airspaces during leakage or injury.",
+    "histology": "Look for pink fibrillary, stringy or mesh-like material within alveoli, sometimes mixed with inflammatory cells.",
+    "context": "Fibrin can occur in several injury patterns. Distinguish free airspace strands from a membrane coating an alveolar wall.",
+    "source": "https://webpath.med.utah.edu/INFLHTML/INFL005.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "hyaline_membranes": {
+    "description": "Protein-rich material and cellular debris coating injured alveolar surfaces.",
+    "histology": "Look for smooth, dense pink bands lining alveolar walls, rather than loose material in the centre of an airspace.",
+    "context": "Seen in diffuse alveolar damage and neonatal respiratory distress; the finding alone does not identify the cause.",
+    "source": "https://webpath.med.utah.edu/LUNGHTML/LUNG133.html",
+    "source_name": "University of Utah · WebPath",
+    "additional_source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7271213/",
+    "additional_source_name": "Pathology of Pulmonary Infection"
+  },
+  "increased_alveolar_macrophages": {
+    "description": "More scavenger immune cells than usual within the lung airspaces.",
+    "histology": "Look for numerous large cells with abundant pale or foamy cytoplasm and round to oval nuclei inside alveoli; some contain brown pigment.",
+    "context": "Macrophages normally occur in small numbers. An increase is a response pattern and does not specify one disease.",
+    "source": "https://webpath.med.utah.edu/LUNGHTML/LUNG100.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "lung_congestion": {
+    "description": "Excess blood within the vessels of the lung.",
+    "histology": "Look for dilated capillaries packed with red cells within the alveolar walls; airspace oedema may accompany them.",
+    "context": "In congestion, red cells are mainly inside capillaries. Free red cells filling airspaces suggest accompanying haemorrhage.",
+    "source": "https://webpath.med.utah.edu/LUNGHTML/LUNG131.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "lung_hemorrhage": {
+    "description": "Blood escaping from vessels into lung tissue or airspaces.",
+    "histology": "Look for free red blood cells filling alveoli outside the septal capillaries. Older bleeding may leave macrophages containing brown haemosiderin.",
+    "context": "Assess the distribution and tissue quality; the presence of blood alone does not identify why bleeding occurred.",
+    "source": "https://webpath.med.utah.edu/LUNGHTML/LUNG101.html",
+    "source_name": "University of Utah · WebPath"
+  },
+  "pneumonitis": {
+    "description": "A broad label for lung inflammation, often involving the alveolar walls.",
+    "histology": "Look for inflammatory cells expanding alveolar septa, sometimes with reactive lining cells. Compare with neutrophils predominantly filling airspaces in bronchopneumonia.",
+    "context": "The label is nonspecific: inflammation alone does not distinguish infectious from noninfectious causes.",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7271213/",
+    "source_name": "Pathology of Pulmonary Infection"
+  },
+  "preterm_lung": {
+    "description": "Immature lung architecture reflecting an earlier stage of development.",
+    "histology": "Look for relatively simple distal airspaces with broad, cellular septa and fewer secondary septal crests than in more mature lung.",
+    "context": "Interpret with gestational age. Immaturity and hyaline membranes are separate findings and may coexist.",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2662989/",
+    "source_name": "AJRCCM · human preterm lung histology"
+  }
+}

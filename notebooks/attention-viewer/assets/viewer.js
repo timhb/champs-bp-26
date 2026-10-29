@@ -89,6 +89,7 @@ function markSlide() {
   for (const button of document.querySelectorAll('.slide-option')) button.setAttribute('aria-current', String(button.dataset.key === state.key));
 }
 async function loadSlide(key, initialBranch = 0) {
+  window.findingHelp.hide();
   slideAbort?.abort(); branchAbort?.abort(); slideAbort = new AbortController();
   const signal = slideAbort.signal, requestID = ++state.request;
   window.casePanel.load(key);
@@ -199,6 +200,7 @@ function renderDetails(detail) {
   }
 }
 function renderBranches() {
+  window.findingHelp.hide();
   const preserveFocus = document.activeElement?.classList.contains('branch-option');
   const target = $('branch-list'); target.replaceChildren();
   $('branch-select').replaceChildren(); $('branch-select').disabled = false;
@@ -215,9 +217,9 @@ function renderBranches() {
     line.append(node('strong', '', pretty(branch.label)), metrics);
     const track = node('span', 'score-track'), fill = node('span', 'score-fill');
     fill.style.width = `${branch.score * 100}%`; track.append(fill); button.append(line, track);
-    button.addEventListener('click', () => selectBranch(branch.id)); target.append(button);
+    button.addEventListener('click', () => selectBranch(branch.id)); target.append(window.findingHelp.attach(button, branch.label));
   }
-  if (preserveFocus) target.children[state.branch]?.focus({preventScroll: true});
+  if (preserveFocus) target.querySelector(`.branch-option[data-branch="${state.branch}"]`)?.focus({preventScroll: true});
 }
 async function selectBranch(branch) {
   if (!state.detail) return;
