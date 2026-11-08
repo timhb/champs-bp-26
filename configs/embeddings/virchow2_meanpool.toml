@@ -1,0 +1,4 @@
+feature_index = "/sc/projects/sci-lippert/champs/manifest/feature_index.csv"
+out = "/sc/projects/sci-lippert/champs/embeddings/virchow2_meanpool"
+resolution = "20x_224px_0px_overlap"
+chunk_size = 8192

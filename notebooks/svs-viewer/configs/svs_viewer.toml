@@ -1,0 +1,20 @@
+# Settings for the read-only SVS viewer (notebooks/svs-viewer). Start it with `pixi run viewer`.
+
+# CHAMPS project share. The viewer only reads from here and never writes, moves or deletes.
+data_root = "/sc/projects/sci-lippert/champs"
+
+# Cache of slide paths and sizes found by scanning data_root. Relative paths are resolved
+# from the repository root; data/processed/ is gitignored because it lists dataset files.
+index_file = "data/processed/svs-viewer/index.json"
+
+# Public medical definitions cached locally; report text is never sent to NLM.
+# Rebuild with: pixi run python notebooks/svs-viewer/build_medical_glossary.py
+glossary_file = "data/processed/svs-viewer/mesh.json"
+glossary_source_url = "https://nlmpubs.nlm.nih.gov/projects/mesh/MESH_FILES/xmlmesh/desc2026.gz"
+glossary_year = 2026
+glossary_additions_file = "notebooks/svs-viewer/configs/medical_reference_terms.json"
+glossary_images_file = "notebooks/svs-viewer/configs/medical_reference_images.json"
+
+# Localhost only, so other cluster users cannot open the viewer. Reach it via port forwarding.
+host = "127.0.0.1"
+port = 8765

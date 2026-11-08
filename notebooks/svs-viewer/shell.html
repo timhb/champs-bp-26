@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CHAMPS Explorer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+  /* Layout: a slim nav bar on top; each section lives in its own iframe below and stays loaded while hidden. */
+  :root {
+    --bar: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e3e1dc; --ground: #f6f5f2;
+    --accent: #7a3e8f; --accent-soft: #f1e8f4;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { color-scheme: dark; --bar: #1e1e21; --ink: #ececee; --muted: #9a9aa2; --line: #2e2e33; --ground: #151517; --accent: #c792dc; --accent-soft: #2c2231; }
+  }
+  :root[data-theme="dark"] { color-scheme: dark; --bar: #1e1e21; --ink: #ececee; --muted: #9a9aa2; --line: #2e2e33; --ground: #151517; --accent: #c792dc; --accent-soft: #2c2231; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--ground); color: var(--ink); font: 13.5px/1.4 var(--sans); display: flex; flex-direction: column; }
+  nav { display: flex; align-items: stretch; gap: 4px; height: 46px; padding: 0 max(16px, env(safe-area-inset-left, 0px)); background: var(--bar); border-bottom: 1px solid var(--line); flex: none; }
+  .tab { display: flex; align-items: center; gap: 7px; padding: 0 14px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 13px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: 4px; }
+  .sp { flex: 1; }
+  .meta { display: flex; align-items: center; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .meta .pill { border: 1px solid var(--line); border-radius: 10px; padding: 1px 8px; }
+  #stage { position: relative; flex: 1; min-height: 0; }
+  #stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--ground); }
+  #stage iframe:not(.on) { visibility: hidden; pointer-events: none; }
+  @media (max-width: 640px) { .meta { display: none; } .tab { padding: 0 9px; } }
+</style>
+</head>
+<body>
+<nav aria-label="Sections">
+  <a class="tab" href="#pathology" data-tab="pathology">Case pathology</a>
+  <a class="tab" href="#slides" data-tab="slides">Slides</a>
+  <a class="tab" href="#map" data-tab="map">Disease Map</a>
+  <a class="tab" href="#links" data-tab="links">Data links</a>
+  <span class="sp"></span>
+  <div class="meta"><span class="pill" id="meta">read-only</span></div>
+</nav>
+<div id="stage"></div>
+<script>
+const PAGES = { slides: '/viewer', map: '/map', links: '/diagram', pathology: '/pathology' };
+const frames = {};
+function frame(tab) {
+  if (!frames[tab]) {  // created on first visit, then kept alive so state survives switching
+    const f = document.createElement('iframe');
+    f.src = PAGES[tab]; f.title = tab;
+    document.getElementById('stage').append(f);
+    frames[tab] = f;
+  }
+  return frames[tab];
+}
+function show(tab) {
+  if (!PAGES[tab]) tab = 'slides';
+  const f = frame(tab);
+  Object.values(frames).forEach(x => x.classList.toggle('on', x === f));
+  document.querySelectorAll('.tab').forEach(a => a.dataset.tab === tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+  if (location.hash.slice(1) !== tab) history.replaceState(null, '', '#' + tab);
+  f.contentWindow?.dispatchEvent(new Event('resize'));
+  if (tab === 'pathology' && window.selectedStudy && f.dataset.study !== window.selectedStudy) {
+    const study = window.selectedStudy;
+    f.dataset.study = study;
+    const open = () => f.contentWindow.openStudy(study);
+    if (f.contentWindow.openStudy) open(); else f.addEventListener('load', open, { once: true });
+  }
+}
+window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+// called by the disease map: jump to Slides with a country / disease filter
+window.showSlides = filter => {
+  const f = frame('slides');
+  show('slides');
+  const apply = () => f.contentWindow.applyMapFilter ? f.contentWindow.applyMapFilter(filter) : setTimeout(apply, 200);
+  if (f.contentDocument?.readyState === 'complete') apply(); else f.addEventListener('load', apply, { once: true });
+};
+
+fetch('/api/facets').then(r => r.json()).then(f => {
+  document.getElementById('meta').textContent = `${f.total.toLocaleString()} slides · ${f.cases.toLocaleString()} cases · read-only`;
+}).catch(() => {});
+show(location.hash.slice(1));
+</script>
+</body>
+</html>

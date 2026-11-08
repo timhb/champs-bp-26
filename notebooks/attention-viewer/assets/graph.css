@@ -1,0 +1,87 @@
+.graph-description { color: var(--muted-foreground); margin: 8px 0 0; font-size: 14px; }
+.graph-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 16px; }
+.graph-controls label, .graph-search label { display: block; font-weight: 500; margin-bottom: 6px; }
+.graph-controls .branch-field { flex: 1; min-width: 220px; }
+.graph-controls select { width: 100%; }
+.graph-controls [hidden] { display: none; }
+.cluster-controls input { width: 130px; }
+.overlay-controls input[type="number"] { width: 155px; }
+.graph-controls .overlay-check { display: flex; align-items: center; gap: 6px; margin: 0; min-height: 32px; font-weight: 400; }
+.overlay-controls { margin-bottom: 8px; }
+.cluster-summary-panel { margin-top: 16px; overflow: hidden; }
+.summary-note { padding: 0 16px; margin: 0 0 12px; }
+#cluster-summaries { overflow-x: auto; }
+.cluster-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+.cluster-table th, .cluster-table td { padding: 12px 16px; border-top: 1px solid var(--border); vertical-align: top; }
+.cluster-table th { color: var(--muted-foreground); font-weight: 500; background: var(--sidebar); }
+.cluster-table button { white-space: nowrap; }
+.age-bar { display: inline-flex; height: 10px; width: 140px; border-radius: 3px; overflow: hidden; background: var(--muted); }
+.age-bar i { display: block; height: 100%; }
+.cluster-table td:last-child { min-width: 190px; }
+.legend-ramp { display: inline-block; width: 120px; height: 10px; background: linear-gradient(to right, #4338ca, #14b8a6, #fbbf24); border-radius: 3px; }
+.graph-legend .legend-ramp { width: 120px; height: 10px; border-radius: 3px; background: linear-gradient(to right, hsl(245 68% 46%), hsl(145 68% 46%), hsl(45 68% 46%)); }
+#graph-k { width: 110px; }
+.graph-help { color: var(--muted-foreground); font-size: 12px; margin: 8px 0 20px; }
+.graph-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.graph-panel { overflow: hidden; }
+.graph-stage { position: relative; height: clamp(400px, 65vh, 850px); background: var(--sidebar); }
+#graph-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+#graph-loading { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in oklch, var(--background) 94%, transparent); padding: 24px; text-align: center; }
+#graph-loading[hidden] { display: none; }
+#neighbor-heading[hidden], #neighbor-pagination[hidden] { display: none; }
+#graph-tooltip { position: absolute; pointer-events: none; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--popover); font-size: 12px; max-width: 280px; overflow-wrap: anywhere; }
+.graph-footer, .graph-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted-foreground); }
+.graph-footer label { display: flex; align-items: center; gap: 4px; }
+.graph-legend span { display: flex; align-items: center; gap: 6px; }
+.graph-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.graph-inspector { overflow: hidden; }
+.graph-search, #graph-selection { padding: 16px; border-bottom: 1px solid var(--border); }
+.graph-search input { width: 100%; }
+#graph-selection h3 { overflow-wrap: anywhere; margin: 0 0 12px; font-size: 14px; }
+#graph-selection dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 12px; }
+#graph-selection dt { color: var(--muted-foreground); }
+#graph-selection dd { margin: 0; overflow-wrap: anywhere; }
+#graph-selection a { margin-top: 12px; }
+.graph-result { display: block; width: 100%; text-align: left; background: var(--background); color: var(--foreground); border: 0; border-bottom: 1px solid var(--border); padding: 10px 16px; cursor: pointer; font: inherit; }
+.graph-result:hover { background: var(--muted); }
+.graph-result strong { display: block; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+.graph-result span { display: block; color: var(--muted-foreground); font-size: 12px; margin-top: 4px; }
+.graph-provenance { margin-top: 16px; padding: 16px; font-size: 12px; color: var(--muted-foreground); }
+.graph-provenance summary { cursor: pointer; color: var(--foreground); font-size: 14px; }
+.graph-provenance p { overflow-wrap: anywhere; }
+@media (max-width: 900px) { .graph-layout { grid-template-columns: 1fr; } .graph-controls > div { flex: 1 1 140px; } .graph-stage { height: 55vh; min-height: 350px; } }
+@media (max-width: 600px) { .app-header { height: auto; min-height: 64px; padding: 12px 16px; flex-wrap: wrap; gap: 12px; } .brand > span:last-child { display: none; } .graph-controls .branch-field { min-width: 180px; } }
+
+.association-panel { margin-top: 16px; overflow: hidden; min-width: 0; }
+.association-controls { padding-top: 0; }
+.association-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 0 16px; }
+.association-metric { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+.association-metric .metric-label { font-size: 12px; font-weight: 500; }
+.association-metric > strong { display: block; font-size: 26px; margin: 8px 0; font-weight: 600; }
+.association-metric p { color: var(--muted-foreground); font-size: 12px; line-height: 1.5; margin: 4px 0 0; }
+.association-metric .metric-interval { color: var(--foreground); }
+.association-chart { padding: 0 16px; }
+.association-chart h3 { font-size: 14px; font-weight: 500; margin: 20px 0 8px; }
+.association-scroll { overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius); }
+.association-scroll:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.association-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+.association-table caption { text-align: left; padding: 12px; color: var(--muted-foreground); }
+.association-table th, .association-table td { padding: 10px 12px; border-top: 1px solid var(--border); min-width: 140px; }
+.association-table th { font-weight: 500; background: var(--sidebar); }
+.association-table small { display: block; color: var(--muted-foreground); margin-top: 6px; font-weight: 400; white-space: nowrap; }
+.association-table td strong { font-size: 16px; font-weight: 500; }
+.association-histograms { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+.association-histogram { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; min-width: 0; }
+.association-histogram .graph-help { margin: 8px 0 12px; }
+.histogram-bars { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.histogram-bin { text-align: center; font-size: 10px; min-width: 0; }
+.histogram-bin > strong { font-size: 11px; font-weight: 500; }
+.histogram-bin > span, .histogram-bin > small { display: block; margin-top: 5px; overflow-wrap: anywhere; color: var(--muted-foreground); }
+.histogram-plot { position: relative; height: 90px; border-bottom: 1px solid var(--border); margin-top: 6px; }
+.histogram-plot i { display: block; position: absolute; bottom: 0; }
+.histogram-reference { left: 10%; width: 80%; border: 1px solid var(--muted-foreground); border-bottom: 0; z-index: 1; pointer-events: none; }
+.histogram-bar { left: 22%; width: 56%; opacity: .85; }
+.association-details { margin: 16px; font-size: 12px; }
+.association-details summary { cursor: pointer; }
+.association-details .graph-help { margin-bottom: 8px; line-height: 1.6; }
+@media (max-width: 600px) { .association-histograms { grid-template-columns: minmax(0, 1fr); } .association-controls button { width: 100%; } }

@@ -45,3 +45,19 @@ and runtime.
 
 We use **CHAMPS MITS pathology samples**. Keep dataset files outside Git and
 document access/setup instructions without including credentials.
+
+## SVS viewer
+
+A read-only browser for the CHAMPS slides and their case data (lab, TAC, cause of death,
+CPL reports), with a disease map and a diagram of how the tables link. It lives in
+[notebooks/svs-viewer/](notebooks/svs-viewer/) and never writes to the dataset share.
+
+```bash
+pixi run viewer            # serves http://127.0.0.1:8765
+pixi run viewer --rescan   # re-scan the slide folder after new slides arrive
+```
+
+Run it on a compute node and forward port 8765 (e.g. via VS Code's Ports panel). Paths and
+the port are set in [notebooks/svs-viewer/configs/svs_viewer.toml](notebooks/svs-viewer/configs/svs_viewer.toml). The first start scans
+the slide folder and caches the list in `data/processed/svs-viewer/` (gitignored); case
+tables take about 20 seconds to load.

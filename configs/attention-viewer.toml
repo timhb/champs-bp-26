@@ -1,0 +1,43 @@
+# Run with pixi run attention-viewer; use SSH port forwarding from your browser.
+host = "127.0.0.1"
+port = 8766
+data_root = "/sc/projects/sci-lippert/champs"
+manifest = "data/inference/slides.csv"
+feature_index = "/sc/projects/sci-lippert/champs/manifest/feature_index.csv"
+slide_registry = "/sc/projects/sci-lippert/champs/reports/derived/slide_labels.parquet"
+models_root = "/sc/projects/sci-lippert/champs/models/findings_champion"
+attention_cache_size = 4
+open_slide_cache_size = 4
+cpu_threads = 4
+
+[graph]
+embeddings_root = "../champs-mits-histopathology/embeddings/all_clam_mb"
+cache_root = "outputs/attention-graph"
+default_organ = "liver"
+organs = ["liver"]
+default_k = 10
+edge_budget = 150000
+seed = 42
+perplexity = 30
+tsne_iterations = 1000
+umap_neighbors = 15
+umap_min_dist = 0.1
+recover_missing = true
+
+[clustering]
+default_method = "leiden"
+leiden_k = 15
+resolution = 1.0
+max_leiden_edges = 2000000
+min_cluster_size = 50
+min_samples = 10
+n_clusters = 12
+kmeans_n_init = 10
+
+[associations]
+bootstrap_resamples = 200
+age_bin_edges = [0, 1, 12, 36, 60]
+
+[graph_metadata]
+mapping = "champs_deid_studyid_mapping.csv"
+demographics = "level-2-deidentified-data/CHAMPS_de_identified_data/CHAMPS_deid_basic_demographics.csv"

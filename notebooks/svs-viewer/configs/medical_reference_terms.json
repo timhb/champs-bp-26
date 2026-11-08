@@ -1,0 +1,29 @@
+[
+  {
+    "id": "CHAMPS-MITS",
+    "name": "Minimally invasive tissue sampling (MITS)",
+    "terms": ["MITS", "minimally invasive tissue sampling"],
+    "definition": "A postmortem approach that collects small tissue and fluid samples to help investigate cause of death. The linked CHAMPS publication describes standardized specimen collection and histology procedures.",
+    "definition_kind": "Source-based summary",
+    "source_name": "CHAMPS MITS standardization study, CDC Stacks",
+    "url": "https://stacks.cdc.gov/view/cdc/89259"
+  },
+  {
+    "id": "NCI-HE",
+    "name": "Hematoxylin and eosin staining (H&E)",
+    "terms": ["H&E", "HE", "H and E", "H&E staining", "hematoxylin and eosin", "hematoxylin eosin", "hematoxylin and eosin staining"],
+    "definition": "A routine stain using two dyes. Hematoxylin colors nuclei blue to purple; eosin colors cytoplasm and supporting tissue pink to red, making tissue structure easier to examine.",
+    "definition_kind": "Source-based summary",
+    "source_name": "NCI Dictionary of Cancer Terms",
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/hematoxylin-and-eosin-staining"
+  },
+  {
+    "id": "IARC-SQUAMES",
+    "name": "Squames",
+    "terms": ["squame", "squames"],
+    "definition": "Superficial, keratinized squamous cells, often lacking a nucleus. The linked IARC atlas describes this term in cervical cytology; its significance in a MITS specimen depends on the tissue and report context.",
+    "definition_kind": "Source-based summary",
+    "source_name": "IARC Histopathology and Cytopathology Atlas glossary",
+    "url": "https://screening.iarc.fr/atlasglossdef.php?key=Squames"
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "M0005604": {
+    "caption": "Lung tissue with CMV infection: an enlarged pneumocyte with an intranuclear inclusion. This example shows a tissue change associated with CMV.",
+    "credit": "CDC / Dr. Edwin P. Ewing, Jr.; PHIL 958",
+    "url": "/reference-images/cmv-lung.jpg",
+    "source_url": "https://wwwn.cdc.gov/phil/Details.aspx?pid=958",
+    "license": "Public domain"
+  },
+  "M0017073": {
+    "caption": "Human lung with Pneumocystis pneumonia. Combined H&E and GMS stains highlight organisms within alveolar spaces; organism detail requires the special silver stain.",
+    "credit": "CDC / Dr. Francis Chandler; PHIL 16177",
+    "url": "/reference-images/pneumocystis-lung.jpg",
+    "source_url": "https://wwwn.cdc.gov/phil/Details.aspx?pid=16177",
+    "license": "Public domain"
+  }
+}

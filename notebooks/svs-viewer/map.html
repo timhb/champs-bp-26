@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CHAMPS Disease Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<style>
+  /* Layout: control bar on top, map fills the left, site detail + table on the right. */
+  :root {
+    --ground: #f5f4f7; --surface: #fcfcfb; --ink: #1f1d24; --muted: #6c6875; --line: #d9d5e0;
+    --accent: #7a3e8f; --accent-soft: #f1e8f4;
+    --ocean: #eef1f5; --land: #e2dfe6; --land-site: #d3cbdb; --border: #fcfcfb;
+    --bubble: #2a78d6;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948; --other: #a9a6ae;
+    --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { color-scheme: dark;
+      --ground: #131216; --surface: #1a1a19; --ink: #ecebef; --muted: #a29eab; --line: #34313b;
+      --accent: #c792dc; --accent-soft: #2c2231; --ocean: #16181d; --land: #2a2830; --land-site: #3a3542; --border: #16181d;
+      --bubble: #3987e5;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767; --other: #6f6c75; }
+  }
+  :root[data-theme="dark"] { color-scheme: dark;
+    --ground: #131216; --surface: #1a1a19; --ink: #ecebef; --muted: #a29eab; --line: #34313b;
+    --accent: #c792dc; --accent-soft: #2c2231; --ocean: #16181d; --land: #2a2830; --land-site: #3a3542; --border: #16181d;
+    --bubble: #3987e5;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767; --other: #6f6c75; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--ground); color: var(--ink); font: 13.5px/1.45 var(--sans); display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: end; padding: 12px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); background: var(--surface); }
+  h1 { font-size: 17px; margin: 0; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .ctl { display: grid; gap: 3px; }
+  .ctl label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  select { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--ground); color: var(--ink); max-width: 260px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { font: inherit; border: 0; background: var(--ground); color: var(--muted); padding: 5px 12px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .sp { flex: 1; }
+  a { color: var(--accent); }
+  .wrap { flex: 1; display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
+  #mapbox { position: relative; background: var(--ocean); min-height: 0; overflow: hidden; }
+  #map { width: 100%; height: 100%; display: block; cursor: grab; }
+  #map:active { cursor: grabbing; }
+  .land { fill: var(--land); stroke: var(--border); stroke-width: .6; }
+  .land.site { fill: var(--land-site); }
+  .sitept { fill: var(--ink); }
+  .leader { stroke: var(--muted); stroke-width: 1; fill: none; }
+  .bubble { fill: var(--bubble); fill-opacity: .45; stroke: var(--bubble); stroke-width: 1.5; cursor: pointer; }
+  .bubble:hover { fill-opacity: .65; }
+  .slice { stroke: var(--surface); stroke-width: 1.5; cursor: pointer; }
+  .slice:hover { opacity: .8; }
+  .sitelbl { fill: var(--ink); font: 600 11.5px var(--sans); paint-order: stroke; stroke: var(--ocean); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+  .sitelbl .n { fill: var(--muted); font-weight: 400; }
+  #legend { position: absolute; left: 12px; bottom: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12px; max-width: 320px; display: grid; gap: 4px; }
+  #legend .row { display: flex; gap: 8px; align-items: center; }
+  #legend .row.click { cursor: pointer; border-radius: 4px; padding: 1px 3px; }
+  #legend .row.click:hover { background: var(--accent-soft); }
+  #legend .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  #legend svg text { fill: var(--muted); font: 11px var(--sans); }
+  #legend svg circle { fill: none; stroke: var(--muted); }
+  #legend h3, aside h3 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 4px; font-weight: 600; }
+  #tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font-size: 12px; box-shadow: 0 4px 14px rgb(0 0 0 / .12); max-width: 260px; }
+  #tip b { font-weight: 600; }
+  #zoomhint { position: absolute; right: 12px; bottom: 12px; color: var(--muted); font-size: 11px; background: var(--surface); padding: 3px 8px; border-radius: 5px; border: 1px solid var(--line); }
+  aside { background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto; padding: 14px 16px 24px; display: grid; gap: 18px; align-content: start; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.2px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+  td { padding: 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.click { cursor: pointer; } tr.click:hover td { background: var(--accent-soft); }
+  tr.sel td { background: var(--accent-soft); }
+  .bar { height: 6px; border-radius: 3px; background: var(--bubble); min-width: 1px; }
+  .note { color: var(--muted); font-size: 11.5px; }
+  .big { font-size: 22px; font-weight: 600; }
+  .go { font: 600 12.5px var(--sans); color: var(--accent); background: var(--accent-soft); border: 1px solid transparent; border-radius: 7px; padding: 7px 11px; cursor: pointer; text-align: left; margin-top: 8px; }
+  .go:hover { border-color: var(--accent); }
+  @media (max-width: 820px) { .wrap { grid-template-columns: 1fr; grid-template-rows: 60vh auto; } aside { border-left: 0; border-top: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Disease map</h1><div class="sub" id="status">Loading…</div></div>
+  <div class="ctl"><label for="measure">Disease measure</label>
+    <select id="measure">
+      <option value="uc">Underlying cause of death (DeCoDe)</option>
+      <option value="ic">Immediate cause of death (DeCoDe)</option>
+      <option value="any">Any condition in causal chain</option>
+      <option value="tac">TAC pathogen positive</option>
+      <option value="pathology">Pathology categories</option>
+    </select></div>
+  <div class="ctl"><label for="scope">Cases</label>
+    <select id="scope"><option value="all">All CHAMPS cases</option><option value="slides">Only cases with slides here</option></select></div>
+  <div class="ctl"><label>View</label><div class="seg" id="view"><button data-v="circles" class="on">Circles</button><button data-v="pies">Pies</button></div></div>
+  <div class="ctl" id="cDisease"><label for="disease">Disease</label><select id="disease"></select></div>
+</header>
+<div class="wrap">
+  <div id="mapbox">
+    <svg id="map" aria-label="World map of CHAMPS sites"></svg>
+    <div id="legend"></div>
+    <div id="tip" hidden></div>
+    <div id="zoomhint">Scroll to zoom · drag to pan · double-click to reset</div>
+  </div>
+  <aside id="side"></aside>
+</div>
+<script>
+// Approximate CHAMPS site locations. The data only records the country (site_iso_code); each country has one site.
+// off = pixel offset for pies at crowded sites (a leader line points to the real site).
+const SITES = {
+  BD: { name: 'Bangladesh', place: 'Baliakandi', ll: [89.53, 23.62], iso: 50 },
+  ET: { name: 'Ethiopia', place: 'Harar / Kersa', ll: [42.12, 9.31], iso: 231 },
+  KE: { name: 'Kenya', place: 'Siaya / Kisumu', ll: [34.5, 0.0], iso: 404 },
+  ML: { name: 'Mali', place: 'Bamako', ll: [-8.0, 12.64], iso: 466, off: [34, -34] },
+  MZ: { name: 'Mozambique', place: 'Manhiça', ll: [32.81, -25.4], iso: 508, off: [60, -6] },
+  NG: { name: 'Nigeria', place: 'Bauchi / Cross River', ll: [9.0, 7.5], iso: 566, off: [24, 34] },
+  PK: { name: 'Pakistan', place: 'Karachi', ll: [67.0, 24.86], iso: 586 },
+  SL: { name: 'Sierra Leone', place: 'Makeni', ll: [-12.04, 8.88], iso: 694, off: [-36, 34] },
+  ZA: { name: 'South Africa', place: 'Soweto', ll: [27.86, -26.27], iso: 710, off: [-60, 16] },
+};
+const SLOTS = ['--s1','--s2','--s3','--s4','--s5','--s6','--s7','--s8'];
+const R_ALL = 110;  // radius a circle would have if it held every tracked case
+const PIE_R = [16, 52];  // pie radius range; size = site's total cases on a log scale
+const pieRadius = n => d3.scaleLog().domain([1, Math.max(10, d3.max(Object.values(st.data.sites), s => s.n))]).range(PIE_R).clamp(true)(Math.max(1, n));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtPct = x => (x * 100 >= 10 ? (x * 100).toFixed(0) : (x * 100).toFixed(1)) + '%';
+const $ = s => document.querySelector(s);
+
+const st = { measure: 'uc', scope: 'all', view: 'circles', disease: '', site: null, data: null, tf: d3.zoomIdentity };
+const svg = d3.select('#map'), gLand = svg.append('g'), gMarks = svg.append('g');
+let projection, path;
+
+async function init() {
+  const world = await (await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')).json();
+  const countries = topojson.feature(world, world.objects.countries).features;
+  const siteIso = new Set(Object.values(SITES).map(s => s.iso));
+  projection = d3.geoNaturalEarth1();
+  path = d3.geoPath(projection);
+  gLand.selectAll('path').data(countries).join('path').attr('class', d => 'land' + (siteIso.has(+d.id) ? ' site' : ''));
+  fit();
+  const zoom = d3.zoom().scaleExtent([1, 8]).on('zoom', e => { st.tf = e.transform; gLand.attr('transform', e.transform); drawMarks(); });
+  svg.call(zoom).on('dblclick.zoom', () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
+  window.addEventListener('resize', () => { fit(); drawMarks(); });
+  load();
+}
+function fit() {
+  const { width, height } = $('#map').getBoundingClientRect();
+  const frame = { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[-22, -36], [98, -36], [98, 32], [-22, 32], [-22, -36]]] } };
+  projection.fitExtent([[20, 20], [width - 20, height - 20]], frame);
+  gLand.selectAll('path').attr('d', path);
+}
+const px = (ll, off) => { const p = st.tf.apply(projection(ll)); return off ? [p[0] + off[0], p[1] + off[1]] : p; };
+
+let loadVersion = 0;
+async function load() {
+  const version = ++loadVersion;
+  st.data = null;
+  gMarks.selectAll('*').remove();
+  $('#legend').innerHTML = '';
+  $('#side').innerHTML = '';
+  hideTip();
+  $('#status').textContent = 'Loading…';
+  let r;
+  try {
+    const response = await fetch(`api/disease_map?measure=${st.measure}&scope=${st.scope}`);
+    if (!response.ok) throw new Error(`Server returned ${response.status}. Restart the viewer if it was recently updated.`);
+    r = await response.json();
+  } catch (error) {
+    if (version === loadVersion) $('#status').textContent = 'Could not load map: ' + error.message;
+    return;
+  }
+  if (version !== loadVersion) return;
+  if (!r.ready) { $('#status').textContent = r.error ? 'Clinical tables failed to load: ' + r.error : 'Clinical tables are loading (about 20 s after start)…'; if (!r.error) setTimeout(() => { if (version === loadVersion) load(); }, 3000); return; }
+  st.data = r;
+  if (!r.diseases.some(d => d[0] === st.disease)) st.disease = '';
+  $('#disease').innerHTML = `<option value="">All cases</option>` +
+    r.diseases.map(([d, n]) => `<option value="${esc(d)}"${d === st.disease ? ' selected' : ''}>${esc(d)} (${n.toLocaleString()})</option>`).join('');
+  const unit = st.measure === 'pathology' ? 'cases with labeled pathology findings' : st.measure === 'tac' ? 'cases with TAC results' : 'cases with DeCoDe results';
+  $('#status').textContent = `${r.n_cases.toLocaleString()} ${unit} · ${r.diseases.length} categories · ${Object.keys(r.sites).length} sites (country level)`;
+  render();
+}
+
+// top 8 categories get fixed colors; the rest fold into Other
+function categories() {
+  const top = st.data.diseases.slice(0, 8).map(d => d[0]);
+  return { top, color: d => { const i = top.indexOf(d); return i < 0 ? css('--other') : css(SLOTS[i]); } };
+}
+function siteValue(code, disease) {
+  const s = st.data.sites[code]; if (!s) return { n: 0, of: 0, share: 0 };
+  const n = disease ? (s.counts[disease] || 0) : s.n;
+  return { n, of: s.n, share: s.n ? n / s.n : 0 };
+}
+const total = () => st.data.n_cases;
+const radius = n => R_ALL * Math.sqrt(n / total());   // area ∝ share of all tracked cases
+
+function render() { if (!st.data) return; drawLegend(); drawMarks(); drawSide(); }
+
+function drawMarks() {
+  if (!st.data) return;
+  gMarks.selectAll('*').remove();
+  const codes = Object.keys(SITES).filter(c => st.data.sites[c]);
+  if (st.view === 'circles') {
+    // biggest first so small circles stay clickable on top
+    codes.map(c => ({ c, v: siteValue(c, st.disease) })).sort((a, b) => b.v.n - a.v.n).forEach(({ c, v }) => {
+      const [x, y] = px(SITES[c].ll), r = radius(v.n);
+      gMarks.append('circle').attr('class', 'bubble').attr('cx', x).attr('cy', y).attr('r', Math.max(r, v.n ? 2 : 0))
+        .on('mousemove', e => tip(e, `<b>${esc(SITES[c].name)}</b> · ${esc(SITES[c].place)}<br>${st.disease ? esc(st.disease) + ': ' : ''}${v.n.toLocaleString()} cases<br>${fmtPct(v.n / total())} of all ${total().toLocaleString()} tracked cases${st.disease ? `<br>${fmtPct(v.share)} of this site's cases` : ''}`))
+        .on('mouseleave', hideTip).on('click', () => { st.site = c; drawSide(); });
+      gMarks.append('circle').attr('class', 'sitept').attr('cx', x).attr('cy', y).attr('r', 2).attr('pointer-events', 'none');
+    });
+    codes.forEach(c => { const [x, y] = px(SITES[c].ll), v = siteValue(c, st.disease); label(c, x, y + Math.max(radius(v.n), 4) + 13, v.n.toLocaleString()); });
+  } else {
+    const { top, color } = categories();
+    const pie = d3.pie().sort(null).value(d => d[1]);
+    // leaders + true site points first, so every pie sits above them
+    codes.forEach(c => {
+      const site = SITES[c], [x0, y0] = px(site.ll), [x, y] = px(site.ll, site.off);
+      if (site.off) gMarks.append('line').attr('class', 'leader').attr('x1', x0).attr('y1', y0).attr('x2', x).attr('y2', y);
+      gMarks.append('circle').attr('class', 'sitept').attr('cx', x0).attr('cy', y0).attr('r', 2.5);
+    });
+    // small pies drawn last so they start on top; hovering raises any pie above the rest
+    [...codes].sort((a, b) => st.data.sites[b].n - st.data.sites[a].n).forEach(c => {
+      const site = SITES[c], s = st.data.sites[c], [x, y] = px(site.ll, site.off), R = pieRadius(s.n);
+      const other = Object.entries(s.counts).filter(([k]) => !top.includes(k)).reduce((a, [, v]) => a + v, 0);
+      const parts = top.map(d => [d, s.counts[d] || 0]).concat([['Other', other]]).filter(p => p[1] > 0);
+      const arc = d3.arc().innerRadius(0).outerRadius(R);
+      const g = gMarks.append('g').attr('transform', `translate(${x},${y})`).on('mouseenter', function () { d3.select(this).raise(); });
+      g.selectAll('path').data(pie(parts)).join('path').attr('class', 'slice').attr('d', arc)
+        .attr('fill', d => d.data[0] === 'Other' ? css('--other') : color(d.data[0]))
+        .on('mousemove', (e, d) => tip(e, `<b>${esc(d.data[0])}</b><br>${esc(site.name)}: ${d.data[1].toLocaleString()} of ${s.n.toLocaleString()} cases (${fmtPct(d.data[1] / s.n)})`))
+        .on('mouseleave', hideTip)
+        .on('click', (e, d) => { st.site = c; if (d.data[0] !== 'Other') { st.disease = d.data[0]; $('#disease').value = d.data[0]; } drawSide(); });
+      const t = g.append('text').attr('class', 'sitelbl').attr('y', R + 14).attr('text-anchor', 'middle');
+      t.append('tspan').text(site.name + ' ');
+      t.append('tspan').attr('class', 'n').text(s.n.toLocaleString());
+    });
+  }
+}
+function label(c, x, y, n) {
+  const t = gMarks.append('text').attr('class', 'sitelbl').attr('x', x).attr('y', y).attr('text-anchor', 'middle');
+  t.append('tspan').text(SITES[c].name + ' ');
+  t.append('tspan').attr('class', 'n').text(n);
+}
+function tip(e, html) {
+  const box = $('#mapbox').getBoundingClientRect(), t = $('#tip');
+  t.innerHTML = html; t.hidden = false;
+  const x = e.clientX - box.left + 14, y = e.clientY - box.top + 14;
+  t.style.left = Math.min(x, box.width - t.offsetWidth - 8) + 'px'; t.style.top = Math.min(y, box.height - t.offsetHeight - 8) + 'px';
+}
+function hideTip() { $('#tip').hidden = true; }
+
+function drawLegend() {
+  const L = $('#legend');
+  if (st.view === 'circles') {
+    // reference circles at fixed shares of all tracked cases
+    const refs = [0.01, 0.05, 0.15], rMax = R_ALL * Math.sqrt(refs[2]), w = rMax * 2 + 90, h = rMax * 2 + 10;  // top padding keeps the top label unclipped
+    const rings = refs.map(f => { const r = R_ALL * Math.sqrt(f), cy = h - 2 - r;
+      return `<circle cx="${rMax + 2}" cy="${cy}" r="${r}"/><line x1="${rMax + 2}" x2="${rMax * 2 + 10}" y1="${h - 2 - 2 * r}" y2="${h - 2 - 2 * r}" stroke="var(--line)"/><text x="${rMax * 2 + 14}" y="${h - 2 - 2 * r + 4}">${fmtPct(f)} · ${Math.round(f * total()).toLocaleString()}</text>`; }).join('');
+    L.innerHTML = `<h3>${st.disease ? esc(st.disease) : 'All cases'}</h3>
+      <div class="note">Circle area is the share of all ${total().toLocaleString()} tracked cases. The scale is the same for every disease.</div>
+      <svg width="${w}" height="${h}" aria-hidden="true">${rings}</svg>`;
+  } else {
+    const { top, color } = categories();
+    const pathology = st.measure === 'pathology';
+    const labels = pathology ? top : [...top, 'Other'];
+    L.innerHTML = `<h3>${pathology ? 'Pathology categories per site · ' + top.length + ' categories' : 'Disease mix per site · top ' + top.length}</h3>` + labels.map(d =>
+      `<div class="row${d === 'Other' ? '' : ' click'}" data-d="${esc(d)}"><span class="sw" style="background:${d === 'Other' ? css('--other') : color(d)}"></span><span>${esc(d)}</span></div>`).join('') +
+      pieKey() +
+      `<div class="note">Pie size is the site's total cases on a log scale. Slices show each site's own mix.${st.measure === 'any' || st.measure === 'tac' || pathology ? ' A case can count in several slices.' : ''} Click a category to see it as circles.</div>`;
+    L.querySelectorAll('.row.click').forEach(r => r.onclick = () => { st.disease = r.dataset.d; $('#disease').value = st.disease; setView('circles'); });
+  }
+}
+
+function pieKey() {
+  const maxN = d3.max(Object.values(st.data.sites), s => s.n);
+  if (!maxN) return '';
+  const refs = [1, 10, 100, 1000].filter(n => n <= maxN * 1.5);
+  // nested circles sharing a bottom edge, labels on leader lines to the right (fits the legend width)
+  const rs = refs.map(pieRadius), rMax = d3.max(rs), h = 2 * rMax + 10, w = 2 * rMax + 50;
+  const parts = refs.map((n, i) => { const r = rs[i], top = h - 2 - 2 * r;
+    return `<circle cx="${rMax + 2}" cy="${h - 2 - r}" r="${r}"/><line x1="${rMax + 2}" x2="${2 * rMax + 10}" y1="${top}" y2="${top}" stroke="var(--line)"/><text x="${2 * rMax + 14}" y="${top + 4}">${n.toLocaleString()}</text>`; }).join('');
+  return `<svg width="${w}" height="${h}" aria-hidden="true">${parts}</svg>`;
+}
+
+// sites whose slides are in the image folder (folder name = country with underscores)
+const SLIDE_SITES = new Set(['BD', 'ET', 'KE', 'ML', 'MZ', 'SL', 'ZA']);
+const MEASURE_LABEL = { uc: 'Underlying cause', ic: 'Immediate cause', any: 'Any condition', tac: 'TAC positive', pathology: 'Pathology category' };
+function slideButton(code) {
+  if (!SLIDE_SITES.has(code)) return '<div class="note">No slides from this site in the image folder.</div>';
+  const d = st.view === 'circles' ? st.disease : '';
+  return `<button class="go" id="goSlides">Show ${esc(SITES[code].name)} slides${d ? ' with ' + esc(d) : ''} →</button>`;
+}
+function goSlides(code) {
+  const d = st.view === 'circles' ? st.disease : '';
+  const f = { country: SITES[code].name.replace(/ /g, '_'), cause: d, measure: st.measure, label: MEASURE_LABEL[st.measure] };
+  if (window.parent !== window && window.parent.showSlides) window.parent.showSlides(f);
+  else location.href = '/#slides';
+}
+
+function drawSide() {
+  if (!st.data) return;
+  const S = $('#side'), d = st.view === 'circles' ? st.disease : '';
+  const codes = Object.keys(st.data.sites).sort((a, b) => siteValue(b, d).n - siteValue(a, d).n);
+  const maxN = d3.max(codes, c => siteValue(c, d).n) || 1;
+  let h = `<section><h3>${d ? esc(d) + ' by site' : 'Cases by site'}</h3><table><tr><th>Site</th><th class="r">Cases</th><th class="r">% of all</th>${d ? '<th class="r">% of site</th>' : ''}<th style="width:24%"></th></tr>`;
+  codes.forEach(c => {
+    const v = siteValue(c, d);
+    h += `<tr class="click${c === st.site ? ' sel' : ''}" data-c="${c}"><td>${esc(SITES[c]?.name || c)}</td><td class="r">${v.n.toLocaleString()}</td><td class="r">${fmtPct(v.n / total())}</td>${d ? `<td class="r">${fmtPct(v.share)}</td>` : ''}<td><div class="bar" style="width:${v.n / maxN * 100}%"></div></td></tr>`;
+  });
+  h += '</table></section>';
+  if (st.site && st.data.sites[st.site]) {
+    const s = st.data.sites[st.site], { top, color } = categories();
+    const rows = Object.entries(s.counts).sort((a, b) => b[1] - a[1]);
+    h += `<section><h3>${esc(SITES[st.site].name)} · ${esc(SITES[st.site].place)}</h3><div><span class="big">${s.n.toLocaleString()}</span> <span class="note">cases</span></div>${slideButton(st.site)}
+      <table><tr><th></th><th>Category</th><th class="r">Cases</th><th class="r">%</th></tr>` +
+      rows.slice(0, 25).map(([k, n]) => `<tr class="click${k === st.disease ? ' sel' : ''}" data-d="${esc(k)}"><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${top.includes(k) ? color(k) : css('--other')}"></span></td><td>${esc(k)}</td><td class="r">${n.toLocaleString()}</td><td class="r">${fmtPct(n / s.n)}</td></tr>`).join('') +
+      `</table>${rows.length > 25 ? `<div class="note">+ ${rows.length - 25} more categories</div>` : ''}</section>`;
+  } else h += `<section class="note">Click a site on the map or in the table to see its full breakdown.</section>`;
+  h += `<section class="note">Location is the country of the CHAMPS site (<code>site_iso_code</code>). Points sit at the approximate site and are not exact case locations.</section>`;
+  S.innerHTML = h;
+  S.querySelectorAll('tr[data-c]').forEach(r => r.onclick = () => { st.site = r.dataset.c; drawSide(); });
+  const gb = $('#goSlides'); if (gb) gb.onclick = () => goSlides(st.site);
+  S.querySelectorAll('tr[data-d]').forEach(r => r.onclick = () => { st.disease = r.dataset.d; $('#disease').value = st.disease; setView('circles'); });
+}
+
+function setView(v) {
+  st.view = v;
+  document.querySelectorAll('#view button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  $('#cDisease').hidden = v !== 'circles';
+  render();
+}
+document.querySelectorAll('#view button').forEach(b => b.onclick = () => setView(b.dataset.v));
+$('#disease').onchange = e => { st.disease = e.target.value; render(); };
+$('#measure').onchange = e => { st.measure = e.target.value; st.disease = ''; load(); };
+$('#scope').onchange = e => { st.scope = e.target.value; load(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => st.data && render());
+new MutationObserver(() => st.data && render()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+init();
+</script>
+</body>
+</html>

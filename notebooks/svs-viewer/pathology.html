@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case pathology · CHAMPS</title>
+<style>
+  :root { --bg: #f6f5f2; --panel: #fff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e3e1dc; --accent: #7a3e8f; --soft: #f1e8f4; }
+  @media (prefers-color-scheme: dark) { :root { color-scheme: dark; --bg: #151517; --panel: #1e1e21; --ink: #ececee; --muted: #9a9aa2; --line: #2e2e33; --accent: #c792dc; --soft: #2c2231; } }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; height: 100vh; display: grid; grid-template-columns: 340px minmax(0, 1fr); color: var(--ink); background: var(--bg); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  aside { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
+  header { padding: 14px 14px 10px; border-bottom: 1px solid var(--line); max-height: 60vh; overflow-y: auto; }
+  h1 { font-size: 15px; margin: 0 0 2px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  input, select, button { font: inherit; color: inherit; }
+  input, select { width: 100%; margin: 4px 0 8px; padding: 7px 9px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; }
+  button { cursor: pointer; background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px; text-align: left; }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  #cases { overflow: auto; flex: 1; }
+  #cases button { display: block; width: 100%; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); padding: 7px 12px; overflow-wrap: anywhere; }
+  #cases button[aria-current=true] { background: var(--soft); box-shadow: inset 3px 0 var(--accent); }
+  #more { margin: 10px auto; }
+  #selection { padding: 10px 14px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+  #status:empty { display: none; }
+  #status { margin-top: 6px; }
+  main { min-width: 0; min-height: 0; }
+  #caseViewer { display: block; width: 100%; height: 100%; border: 0; }
+</style>
+</head>
+<body>
+<aside>
+  <header><h1>Case pathology</h1><div class="muted">All linked slides and report records</div>
+    <label for="query">Find a case</label><input id="query" type="search" placeholder="Study ID, case ID, country…">
+    <label for="country">Country</label><select id="country"><option value="">All countries</option></select>
+    <label for="condition">Pathology condition</label><select id="condition" aria-describedby="conditionHelp"><option value="">All conditions</option></select>
+    <div id="conditionHelp" class="muted">Report-derived findings linked to available images; may describe a tissue group rather than every slide.</div>
+    <label for="hasSlides">Pathology images</label><select id="hasSlides"><option value="">All cases</option><option value="yes">Has slides</option><option value="no">Has no slides</option></select>
+    <button id="clearFilters">Clear filters</button>
+    <div id="count" class="muted" role="status">Loading cases…</div>
+  </header>
+  <div id="cases" aria-label="Cases"></div>
+  <button id="more" hidden>Load more cases</button>
+  <div id="selection"><strong id="caseTitle">Select a case</strong><div id="caseMeta" class="muted">Browse cases above or open the case of a selected slide.</div><div id="status" role="status"></div></div>
+</aside>
+<main><iframe id="caseViewer" src="/viewer?case-view=1" title="Case slide viewer and clinical details"></iframe></main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+let listed = [], current = null, selectedCase = null, listVersion = 0, caseVersion = 0, searchTimer;
+const caseFrame = $('#caseViewer');
+function showSelectedCase() {
+  if (selectedCase && caseFrame.contentWindow.showCase) caseFrame.contentWindow.showCase(selectedCase);
+}
+caseFrame.addEventListener('load', showSelectedCase);
+async function get(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(response.status === 404 ? 'Case or file not found.' : 'Could not load data. Please retry.');
+  return response.json();
+}
+function renderCases() {
+  $('#cases').innerHTML = listed.map(c => `<button data-key="${esc(c.key)}" aria-current="${c.key === current}"><strong>${esc(c.case_id)}</strong><div class="muted">${esc(c.studies.join(', '))}<br>${esc(c.countries.join(', '))}<br>${c.slide_count} slides · ${c.report_count} report records<br>${esc(c.conditions.join('; ') || 'Findings not recorded')}</div></button>`).join('') || '<p>No matching cases.</p>';
+}
+function setOptions(selector, values, label) {
+  const select = $(selector), selected = select.value;
+  select.replaceChildren(new Option(label, ''), ...values.map(v => new Option(v, v)));
+  if (values.includes(selected)) select.value = selected;
+}
+async function loadCases(append = false) {
+  const version = ++listVersion;
+  $('#more').disabled = true;
+  try {
+    const data = await get('/api/pathology/cases?' + new URLSearchParams({q: $('#query').value, country: $('#country').value, condition: $('#condition').value, slides: $('#hasSlides').value, offset: append ? listed.length : 0}));
+    if (version !== listVersion) return;
+    if (!data.ready) {
+      $('#count').textContent = data.error ? 'Case tables failed to load: ' + data.error : 'Loading slides and case tables…';
+      if (!data.error) setTimeout(() => version === listVersion && loadCases(), 2500);
+      return;
+    }
+    if (!Array.isArray(data.countries) || !Array.isArray(data.conditions)) {
+      throw new Error('The viewer server is running an older version. Restart pixi run viewer, then refresh this page.');
+    }
+    listed = append ? listed.concat(data.items) : data.items;
+    setOptions('#country', data.countries, 'All countries');
+    setOptions('#condition', data.conditions, 'All conditions');
+    renderCases();
+    $('#count').textContent = `${listed.length} of ${data.total} cases · read-only`;
+    $('#more').hidden = listed.length >= data.total;
+  } catch (error) { if (version === listVersion) $('#count').textContent = error.message; }
+  finally { if (version === listVersion) $('#more').disabled = false; }
+}
+async function openCase(key) {
+  const version = ++caseVersion;
+  current = key; selectedCase = null;
+  caseFrame.contentWindow.clearCase?.();
+  $('#caseTitle').textContent = 'Loading case…';
+  $('#caseMeta').textContent = '';
+  $('#status').textContent = '';
+  renderCases();
+  try {
+    const data = await get('/api/pathology/case/' + encodeURIComponent(key));
+    if (version !== caseVersion) return;
+    if (!data.ready) {
+      $('#status').textContent = data.error ? 'Case tables failed to load: ' + data.error : 'Case tables are loading…';
+      if (!data.error) setTimeout(() => version === caseVersion && openCase(key), 2500);
+      return;
+    }
+    current = data.key;
+    history.replaceState(null, '', '#' + encodeURIComponent(current));
+    renderCases();
+    $('#caseTitle').textContent = data.case_id;
+    $('#caseMeta').textContent = `${data.studies.join(' · ') || 'No study ID'} · ${data.countries.join(', ')} · ${data.slides.length} slides · ${data.reports.reduce((n, r) => n + r.records.length, 0)} report records`;
+    $('#status').textContent = data.deid ? '' : 'No clinical case mapping found. Images are grouped by their study folder; reports cannot be linked.';
+    selectedCase = data;
+    showSelectedCase();
+  } catch (error) { if (version === caseVersion) { $('#caseTitle').textContent = 'Case unavailable'; $('#status').textContent = error.message; } }
+}
+$('#cases').onclick = e => { const b = e.target.closest('button[data-key]'); if (b) openCase(b.dataset.key); };
+function reloadFilters() {
+  clearTimeout(searchTimer);
+  $('#more').hidden = true;
+  loadCases();
+}
+$('#query').oninput = () => { ++listVersion; $('#more').hidden = true; clearTimeout(searchTimer); searchTimer = setTimeout(() => loadCases(), 200); };
+for (const selector of ['#country', '#condition', '#hasSlides']) $(selector).onchange = reloadFilters;
+$('#clearFilters').onclick = () => {
+  for (const selector of ['#query', '#country', '#condition', '#hasSlides']) $(selector).value = '';
+  reloadFilters();
+};
+$('#more').onclick = () => loadCases(true);
+window.openStudy = study => openCase('study:' + study);
+window.addEventListener('hashchange', () => { if (location.hash) openCase(decodeURIComponent(location.hash.slice(1))); });
+loadCases();
+if (location.hash) openCase(decodeURIComponent(location.hash.slice(1)));
+</script>
+</body>
+</html>
