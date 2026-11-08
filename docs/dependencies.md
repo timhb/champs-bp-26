@@ -18,6 +18,8 @@ Every direct dependency and why we need it. Versions live in `pixi.lock`.
 | python-igraph | Attention graph: Leiden communities on the full cosine neighbor graph |
 | h5py | Inference: reads Virchow2 patch features and writes CLAM embeddings |
 | pytorch | Inference: loads the stored CLAM-MB checkpoints and scores feature bags |
+| pytorch-gpu | Isolated `pooling-gpu` environment: CUDA-enabled PyTorch for mean pooling on Slurm GPUs |
+| cuda-version | Pins the CUDA runtime for the isolated GPU pooling environment |
 | torchvision | Inference: matching PyTorch vision operators used by Trident |
 | py-opencv | Inference: native OpenCV libraries for Trident on the cluster |
 | trident | Inference: tissue segmentation, tiling and Virchow2 feature extraction (source pipeline revision) |

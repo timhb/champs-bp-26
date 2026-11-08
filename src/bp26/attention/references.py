@@ -69,6 +69,10 @@ class ReferenceFindings:
         with self.lock:
             return self._get(row, labels, checkpoint)
 
+    def get_registry(self, row):
+        with self.lock:
+            return self._reference(row, [], [])
+
     def _dataset_rows(self, row, path):
         if path not in self.datasets:
             records = {}
@@ -119,7 +123,7 @@ class ReferenceFindings:
         )
 
     def condition_index(self, catalog, models_root):
-        """Index positive WSI references only for the current organ model heads."""
+        """Index all recorded WSI findings, preserving model-head masks and conflicts."""
         with self.lock:
             if self.conditions is not None:
                 return self.conditions
@@ -138,12 +142,12 @@ class ReferenceFindings:
                         models[organ] = (labels, directory / "artifacts/dataset_with_splits.csv")
             result = {}
             for row in catalog.itertuples():
+                findings = set(self.registry_findings(row))
                 if row.organ in models:
                     labels, path = models[row.organ]
                     reference = self._reference(row, labels, self._dataset_rows(row, path))
-                    findings = set(reference["findings"]) & set(labels)
-                else:
-                    findings = set()
+                    findings.difference_update(labels)
+                    findings.update(set(reference["findings"]) & set(labels))
                 result[row.id] = frozenset(findings)
             self.conditions = result
             return result

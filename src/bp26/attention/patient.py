@@ -5,6 +5,8 @@ import sys
 import threading
 from pathlib import Path
 
+from bp26.inference.stains import detect_stain
+
 SVS = Path(__file__).resolve().parents[3] / "notebooks/svs-viewer"
 
 
@@ -101,6 +103,7 @@ class PatientStore:
                         slide_id=row.slide_id,
                         organ=row.organ,
                         site=row.site,
+                        stain=detect_stain(row.slide_id) or "HE",
                         study_id=study,
                     )
                 )

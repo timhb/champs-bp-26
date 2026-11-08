@@ -104,10 +104,10 @@ window.casePanel = (() => {
     const slides=el('div','patient-case-slides');
     for(const slide of data.available_slides) {
       const button=el('button','patient-slide'); button.type='button';button.setAttribute('aria-current',String(slide.id===currentKey));
-      button.append(el('strong','',slide.slide_id),el('span','',`${title(slide.organ)} · ${title(slide.site)}`));
+      button.append(el('strong','',slide.slide_id),el('span','',`${title(slide.organ)} · ${slide.stain === "HE" ? "H&E" : slide.stain} · ${title(slide.site)}`));
       button.addEventListener('click',()=>document.dispatchEvent(new CustomEvent('attention-slide',{detail:slide.id})));slides.append(button);
     }
-    target.append(section('Available attention slides in this case',data.available_slides.length,slides));
+    target.append(section('Available slides in this case',data.available_slides.length,slides));
     target.append(el('p','patient-note','Report text is scoped to the selected organ. SITE findings, CPL review of SITE scans, and CPL slides retain their separate sources.'));
   }
   function renderAll() {
@@ -154,6 +154,7 @@ window.casePanel = (() => {
         timer=setTimeout(()=>poll(key,id),1200);return;
       }
       data=result;renderSummary();renderOrgan();renderAll();
+      document.dispatchEvent(new CustomEvent('attention-case', {detail:{key, organ:result.context.canonical, slides:result.available_slides}}));
       $('patient-status').textContent=result.case.deid?'Read-only linked patient records.':'No clinical ID mapping found; unavailable records are left empty.';
       $('patient-status').dataset.error='false';
     } catch(error) {

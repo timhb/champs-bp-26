@@ -13,10 +13,11 @@ import torch
 
 from bp26.inference.champion import load_model
 from bp26.inference.manifest import build_manifest
+from bp26.inference.stains import detect_stain
 
 
 def load_catalog(config):
-    """Join model-ready slides to exactly their indexed WSI paths."""
+    """Keep H&E inference inputs and add other stains as image-only slides."""
     manifest = Path(config["manifest"])
     if manifest.is_file():
         frame = pd.read_csv(manifest, keep_default_na=False, dtype=str)
@@ -66,6 +67,30 @@ def load_catalog(config):
         return str(path)
 
     frame["wsi_path"] = frame.wsi_path.map(resolve_wsi)
+    registry_path = Path(config["slide_registry"])
+    if registry_path.is_file():
+        registry = pd.read_parquet(registry_path, columns=["slide_id", "organ", "wsi_path"])
+        registry["organ"] = registry.organ.replace({"left_lung": "lung", "right_lung": "lung"})
+        registry["stain"] = registry.slide_id.map(lambda value: detect_stain(value) or "HE")
+        registry = registry.loc[
+            registry.organ.isin(["lung", "liver"])
+            & registry.stain.ne("HE")
+            & registry.wsi_path.fillna("").ne("")
+        ].drop_duplicates(["organ", "slide_id", "wsi_path"])
+        if registry.duplicated(["organ", "slide_id"]).any():
+            raise ValueError("Registry has ambiguous stained slide identities")
+        registry["wsi_path"] = registry.wsi_path.map(resolve_wsi)
+        registry["site"] = registry.wsi_path.map(
+            lambda value: Path(value).relative_to(root).parts[0]
+        )
+        registry["case_id"] = registry.wsi_path.map(lambda value: Path(value).parent.name)
+        registry["path"] = ""
+        existing = set(zip(frame.organ, frame.slide_id, strict=True))
+        registry = registry.loc[
+            [(row.organ, row.slide_id) not in existing for row in registry.itertuples()]
+        ]
+        frame = pd.concat([frame, registry], ignore_index=True)
+    frame["stain"] = frame.slide_id.map(lambda value: detect_stain(value) or "HE")
     frame["id"] = frame.apply(
         lambda row: hashlib.sha256(f"{row.organ}:{row.slide_id}".encode()).hexdigest()[:20], axis=1
     )

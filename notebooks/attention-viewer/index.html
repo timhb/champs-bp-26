@@ -35,7 +35,8 @@
         <div class="filters">
           <label class="sr-only" for="search-input">Search slide or case</label><div class="search-field"><svg><use href="#search"/></svg><input class="qc-input" id="search-input" type="search" placeholder="Search slide or case…" autocomplete="off"></div>
           <div class="filter-row"><div><label for="organ-filter">Organ</label><select class="qc-input" id="organ-filter"><option value="lung">Lung</option><option value="liver">Liver</option><option value="">All organs</option></select></div><div><label for="site-filter">Site</label><select class="qc-input" id="site-filter"><option value="">All sites</option></select></div></div>
-          <div class="condition-field"><label for="condition-filter">Condition</label><select class="qc-input" id="condition-filter" aria-describedby="condition-filter-note" disabled><option value="">All conditions</option></select><p id="condition-filter-note">Reference findings for predicted conditions</p></div>
+          <div class="condition-field"><label for="stain-filter">Staining</label><select class="qc-input" id="stain-filter" aria-describedby="stain-filter-note" disabled><option value="">All stainings</option><option value="HE" selected>H&amp;E</option></select><p id="stain-filter-note">Stainings available in this slide library</p></div>
+          <div class="condition-field"><label for="condition-filter">Disease / finding</label><select class="qc-input" id="condition-filter" aria-describedby="condition-filter-note" disabled><option value="">All diseases / findings</option></select><p id="condition-filter-note">All recorded findings for the selected organ</p></div>
         </div>
         <div id="slide-list" class="slide-list" aria-label="Matching slides" aria-busy="true"><p class="list-message">Loading slide library…</p></div>
         <div class="pagination"><button class="qc-button" data-variant="outline" id="previous-page" disabled>Previous</button><span id="page-label" aria-live="polite">—</span><button class="qc-button" data-variant="outline" id="next-page" disabled>Next</button></div>
@@ -50,6 +51,7 @@
           <canvas id="attention-canvas" aria-hidden="true"></canvas>
           <div id="viewer-message" class="viewer-message" role="status"><span class="empty-symbol"><svg><use href="#layers"/></svg></span><strong>Your slide, in focus</strong><span>Choose a slide to explore its attention.</span></div>
           <div id="tile-tooltip" hidden></div>
+          <nav id="stain-previews" class="stain-previews" aria-label="Other stainings from the same patient and organ" hidden><div id="stain-preview-list" class="stain-preview-list"></div></nav>
           <div class="stage-caption"><div id="image-scale"><span id="scale-text">—</span><div id="scale-bar"></div></div><span>Scroll to zoom · Drag to pan</span></div>
         </div>
         <div class="overlay-settings">

@@ -1,5 +1,6 @@
 """Attention normalization, full-resolution alignment, and local API contracts."""
 
+import io
 import tempfile
 import unittest
 from pathlib import Path
@@ -100,6 +101,16 @@ class AttentionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "outside"):
             load_catalog(self.config)
 
+    def test_catalog_normalizes_stain_names(self):
+        manifest = pd.read_csv(self.config["manifest"])
+        index = pd.read_csv(self.config["feature_index"], keep_default_na=False)
+        for slide_id, expected in [("slide", "HE"), ("slide_GM", "GRAM"), ("slide_PAS", "PAS")]:
+            manifest["slide_id"] = slide_id
+            index["slide_id"] = slide_id
+            manifest.to_csv(self.config["manifest"], index=False)
+            index.to_csv(self.config["feature_index"], index=False)
+            self.assertEqual(load_catalog(self.config).iloc[0].stain, expected)
+
     def test_api_branches_attention_export_and_tiles(self):
         catalog = load_catalog(self.config)
         key = catalog.iloc[0].id
@@ -145,7 +156,7 @@ class AttentionTests(unittest.TestCase):
         first = load_catalog(self.config).iloc[0].to_dict()
         rows = [
             first | dict(id="positive", slide_id="target-one"),
-            first | dict(id="negative", slide_id="target-two"),
+            first | dict(id="negative", slide_id="target-two", stain="PAS"),
             first | dict(id="other_site", slide_id="target-three", site="other"),
             first | dict(id="other_organ", slide_id="target-four", organ="liver"),
         ]
@@ -166,7 +177,130 @@ class AttentionTests(unittest.TestCase):
         self.assertEqual([row["id"] for row in result["slides"]], ["positive"])
         self.assertEqual(result["conditions"], [dict(value="finding_a", count=1)])
         self.assertEqual(client.get("/api/slides?organ=lung&site=country").get_json()["total"], 2)
+        self.assertEqual(result["stains"], ["HE", "PAS"])
+        self.assertEqual(result["slides"][0]["stain"], "HE")
+        stained = client.get("/api/slides?organ=lung&site=country&stain=PAS").get_json()
+        self.assertEqual([row["id"] for row in stained["slides"]], ["negative"])
+        self.assertEqual(stained["conditions"], [dict(value="finding_a", count=0)])
+        combined = client.get("/api/slides?stain=PAS&condition=finding_a").get_json()
+        self.assertEqual(combined["total"], 0)
+        self.assertEqual(client.get("/api/slides?stain=missing").get_json()["total"], 0)
         self.assertEqual(client.get("/api/slides?condition=missing").get_json()["total"], 0)
         self.assertEqual(
             client.get("/api/slides?condition=finding_a&offset=1").get_json()["total"], 3
         )
+
+    def test_filter_options_are_scoped_to_organ(self):
+        first = load_catalog(self.config).iloc[0].to_dict()
+        catalog = pd.DataFrame(
+            [
+                first | dict(id="lung_he", stain="HE"),
+                first | dict(id="lung_gram", stain="GRAM"),
+                first | dict(id="liver_pas", organ="liver", stain="PAS"),
+            ]
+        ).set_index("id", drop=False)
+        app = create_app(self.config, catalog)
+        app.extensions["reference_findings"].conditions = dict(
+            lung_he=frozenset({"lung_finding"}),
+            lung_gram=frozenset(),
+            liver_pas=frozenset({"liver_finding"}),
+        )
+        client = app.test_client()
+        for organ, stains, finding in [
+            ("lung", ["GRAM", "HE"], "lung_finding"),
+            ("liver", ["PAS"], "liver_finding"),
+        ]:
+            result = client.get(f"/api/slides?organ={organ}").get_json()
+            self.assertEqual(result["stains"], stains)
+            self.assertEqual(result["conditions"], [dict(value=finding, count=1)])
+            empty = client.get(f"/api/slides?organ={organ}&q=missing").get_json()
+            self.assertEqual(empty["total"], 0)
+            self.assertEqual(empty["stains"], stains)
+            self.assertEqual(empty["conditions"], [dict(value=finding, count=0)])
+        all_organs = client.get("/api/slides").get_json()
+        self.assertEqual(all_organs["stains"], ["GRAM", "HE", "PAS"])
+        self.assertEqual(
+            [item["value"] for item in all_organs["conditions"]],
+            ["liver_finding", "lung_finding"],
+        )
+        unknown = client.get("/api/slides?organ=unknown").get_json()
+        self.assertEqual(unknown["stains"], [])
+        self.assertEqual(unknown["conditions"], [])
+
+    def test_registry_adds_image_only_stains_without_feature_files(self):
+        pd.DataFrame(
+            [
+                dict(
+                    slide_id="slide_GM",
+                    organ="right_lung",
+                    wsi_path="data/country/Cases/case1/slide_GM.svs",
+                ),
+                dict(
+                    slide_id="slide_PAS",
+                    organ="liver",
+                    wsi_path="data/country/Cases/case1/slide_PAS.svs",
+                ),
+                dict(
+                    slide_id="other_HE",
+                    organ="lung",
+                    wsi_path="data/country/Cases/case1/other_HE.svs",
+                ),
+            ]
+        ).to_parquet(self.config["slide_registry"])
+        catalog = load_catalog(self.config)
+        self.assertEqual(set(catalog.stain), {"HE", "GRAM", "PAS"})
+        self.assertNotIn("other_HE", set(catalog.slide_id))
+        gram = catalog.loc[catalog.stain.eq("GRAM")].iloc[0]
+        self.assertEqual(gram.path, "")
+        self.assertEqual(gram.case_id, "case1")
+        self.assertEqual(gram.site, "country")
+        self.assertEqual(gram.organ, "lung")
+        self.assertEqual(gram.wsi_path, str(self.root / "country/Cases/case1/slide_GM.svs"))
+
+    def test_non_he_images_never_request_model_attention(self):
+        catalog = load_catalog(self.config)
+        catalog["stain"] = "GRAM"
+        app = create_app(self.config, catalog)
+        key = catalog.iloc[0].id
+
+        class FakeSlide:
+            dimensions = (1000, 2000)
+            properties = {"openslide.objective-power": "40"}
+
+            def get_thumbnail(self, size):
+                return Image.new("RGB", size, "white")
+
+        class FakeZoom:
+            def get_dzi(self, fmt):
+                return "<Image/>"
+
+            def get_tile(self, level, address):
+                return Image.new("RGB", (254, 254), "white")
+
+        with (
+            patch("bp26.attention.server.SlideCache.get", return_value=(FakeSlide(), FakeZoom())),
+            patch(
+                "bp26.attention.server.AttentionStore.get",
+                side_effect=AssertionError("No inference"),
+            ) as inference,
+        ):
+            client = app.test_client()
+            response = client.get(f"/api/slides/{key}")
+            self.assertEqual(response.status_code, 200)
+            detail = response.get_json()
+            self.assertFalse(detail["attention_available"])
+            self.assertEqual(detail["stain"], "GRAM")
+            self.assertEqual(detail["dimensions"], [1000, 2000])
+            self.assertEqual(detail["branches"], [])
+            thumbnail = client.get(f"/api/slides/{key}/thumbnail.jpg")
+            self.assertEqual(thumbnail.mimetype, "image/jpeg")
+            self.assertEqual(Image.open(io.BytesIO(thumbnail.data)).size, (176, 128))
+            self.assertEqual(client.get("/api/slides/unknown/thumbnail.jpg").status_code, 404)
+            self.assertEqual(client.get(f"/dzi/{key}.dzi").status_code, 200)
+            self.assertEqual(client.get(f"/dzi/{key}_files/10/0_0.jpeg").mimetype, "image/jpeg")
+            for suffix in ["attention/0", "export/0.csv", "patch/0.jpg"]:
+                response = client.get(f"/api/slides/{key}/{suffix}")
+                self.assertEqual(response.status_code, 404)
+                self.assertIn("non-H&E", response.get_json()["error"])
+            inference.assert_not_called()
+        self.assertTrue(app.extensions["graph_store"].catalog.empty)

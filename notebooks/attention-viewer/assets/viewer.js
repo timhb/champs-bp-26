@@ -1,6 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const number = value => Number(value).toLocaleString();
+const stainName = value => value === 'HE' ? 'H&E' : value;
 const pretty = value => value.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());
 const state = {key: null, detail: null, heat: null, branch: 0, offset: 0, total: 0, rows: [], request: 0, branchRequest: 0, selectedTile: null};
 let slideAbort, branchAbort, searchAbort, searchTimer, drawing = false, grid = new Map();
@@ -49,26 +50,31 @@ async function searchSlides(autoSelect = false) {
   searchAbort?.abort(); searchAbort = new AbortController();
   const signal = searchAbort.signal;
   $('slide-list').setAttribute('aria-busy', 'true');
-  const params = new URLSearchParams({q: $('search-input').value, organ: $('organ-filter').value, site: $('site-filter').value, condition: $('condition-filter').value, offset: state.offset});
+  const params = new URLSearchParams({q: $('search-input').value, organ: $('organ-filter').value, site: $('site-filter').value, stain: $('stain-filter').value, condition: $('condition-filter').value, offset: state.offset});
   try {
     const data = await fetchJSON(`/api/slides?${params}`, signal);
     state.rows = data.slides; state.total = data.total;
     const selectedCondition = $('condition-filter').value;
-    $('condition-filter').replaceChildren(new Option('All conditions', ''));
+    $('condition-filter').replaceChildren(new Option('All diseases / findings', ''));
     for (const condition of data.conditions) $('condition-filter').add(new Option(`${pretty(condition.value)} (${number(condition.count)})`, condition.value));
-    if (selectedCondition && !data.conditions.some(condition => condition.value === selectedCondition)) $('condition-filter').add(new Option(`${pretty(selectedCondition)} (0)`, selectedCondition));
-    $('condition-filter').value = selectedCondition;
-    $('condition-filter').disabled = !data.conditions.length && !selectedCondition;
+    $('condition-filter').value = data.conditions.some(condition => condition.value === selectedCondition) ? selectedCondition : '';
+    $('condition-filter').disabled = !data.conditions.length;
     if ($('site-filter').options.length === 1) {
       for (const site of data.sites) { const option = new Option(pretty(site), site); $('site-filter').add(option); }
     }
+    const selectedStain = $('stain-filter').value;
+    $('stain-filter').replaceChildren(new Option('All stainings', ''));
+    for (const stain of data.stains) $('stain-filter').add(new Option(stainName(stain), stain));
+    $('stain-filter').value = data.stains.includes(selectedStain) ? selectedStain : '';
+    $('stain-filter').disabled = !data.stains.length;
+    $('stain-filter-note').textContent = data.stains.length === 1 && data.stains[0] === 'HE' ? 'Only H&E slides are available for this selection.' : 'Stainings available for this selection';
     $('catalog-count').textContent = number(data.total);
     $('slide-list').replaceChildren();
     if (!data.slides.length) $('slide-list').append(node('p', 'list-message', 'No matching slides. Try a different search or filter.'));
     for (const slide of data.slides) {
       const button = node('button', 'slide-option'); button.type = 'button'; button.dataset.key = slide.id;
       button.setAttribute('aria-current', String(slide.id === state.key));
-      button.append(node('strong', '', slide.slide_id), node('span', '', `${pretty(slide.site)} · ${pretty(slide.organ)}`));
+      button.append(node('strong', '', slide.slide_id), node('span', '', `${pretty(slide.site)} · ${pretty(slide.organ)} · ${stainName(slide.stain)}`));
       button.addEventListener('click', () => loadSlide(slide.id)); $('slide-list').append(button);
     }
     $('page-label').textContent = data.total ? `${number(state.offset + 1)}–${number(state.offset + data.slides.length)}` : '0 results';
@@ -92,6 +98,9 @@ async function loadSlide(key, initialBranch = 0) {
   window.findingHelp.hide();
   slideAbort?.abort(); branchAbort?.abort(); slideAbort = new AbortController();
   const signal = slideAbort.signal, requestID = ++state.request;
+  $('stain-previews').hidden = true;
+  $('stain-preview-list').replaceChildren();
+  document.querySelector('.viewer-stage').classList.remove('has-stain-previews');
   window.casePanel.load(key);
   state.branchRequest++; state.key = key; state.detail = null; state.heat = null; state.selectedTile = null; grid.clear();
   viewer.close(); queueDraw(); markSlide();
@@ -105,23 +114,36 @@ async function loadSlide(key, initialBranch = 0) {
   const row = state.rows.find(item => item.id === key);
   $('slide-title').textContent = row?.slide_id || 'Loading slide…';
   $('slide-subtitle').textContent = row ? `${pretty(row.site)} · ${pretty(row.organ)}` : '';
-  $('active-branch-label').textContent = 'Loading attention…';
-  message('Loading slide attention', 'Reading Virchow2 features and scoring all finding branches on CPU.', true);
-  status('Computing attention over the complete slide bag. The first load may take a moment.');
+  $('active-branch-label').textContent = 'Loading slide…';
+  message('Loading slide', 'Opening the image and available attention.', true);
+  status('Loading slide. H&E attention may take a moment on the first load.');
   try {
     const detail = await fetchJSON(`/api/slides/${encodeURIComponent(key)}`, signal);
     if (requestID !== state.request) return;
     state.detail = detail;
     $('slide-title').textContent = detail.slide_id;
-    $('organ-label').textContent = `${detail.organ.toUpperCase()} · H&E`;
+    $('organ-label').textContent = `${detail.organ.toUpperCase()} · ${stainName(detail.stain)}`;
     $('slide-subtitle').textContent = `${pretty(detail.site)} · Case ${detail.case_id}`;
     setMagnificationControls();
     renderReferences(detail.reference);
-    $('tile-stat').textContent = `${number(detail.n_tiles)} tiles · ${number(detail.dimensions[0])} × ${number(detail.dimensions[1])} px`;
+    $('tile-stat').textContent = `${detail.attention_available ? number(detail.n_tiles) + ' tiles · ' : ''}${number(detail.dimensions[0])} × ${number(detail.dimensions[1])} px`;
     $('location-stat').textContent = 'Full slide · Level-0 coordinates';
     $('branch-count').textContent = detail.branches.length;
     renderDetails(detail);
+    for (const id of ['overlay-visible', 'opacity', 'threshold']) $(id).disabled = !detail.attention_available;
+    document.querySelector('.overlay-settings').hidden = !detail.attention_available;
+    document.querySelector('.branch-intro').hidden = !detail.attention_available;
+    document.querySelector('.interpretation').hidden = !detail.attention_available;
     viewer.open(`/dzi/${encodeURIComponent(key)}.dzi`);
+    if (!detail.attention_available) {
+      $('active-branch-label').textContent = 'Image only · no attention heatmap for this staining';
+      $('branch-select').replaceChildren(new Option('No attention available', ''));
+      $('branch-list').replaceChildren(node('p', 'list-message', 'Attention is available for H&E slides only.'));
+      $('top-tiles').replaceChildren(node('p', 'list-message', 'No attention tiles for this staining.'));
+      history.replaceState(null, '', `#slide=${encodeURIComponent(key)}`);
+      status(`${stainName(detail.stain)} image · No attention heatmap available.`);
+      return;
+    }
     await selectBranch(Math.max(0, Math.min(detail.branches.length - 1, initialBranch)));
   } catch (error) {
     if (error.name === 'AbortError' || requestID !== state.request) return;
@@ -195,6 +217,10 @@ function updateScale() {
 }
 function renderDetails(detail) {
   const target = $('model-details'); target.replaceChildren();
+  if (!detail.attention_available) {
+    target.append(node('dt', '', 'Staining'), node('dd', '', stainName(detail.stain)), node('dt', '', 'Attention'), node('dd', '', 'Unavailable for this staining'));
+    return;
+  }
   for (const [label, value] of Object.entries({Encoder: detail.encoder, Aggregator: 'CLAM-MB', 'Patch size': '224 px at 20×', Footprint: `${detail.patch_size} px at level 0`, Tiles: number(detail.n_tiles), Epoch: detail.epoch, Checkpoint: detail.checkpoint})) {
     target.append(node('dt', '', label), node('dd', '', value));
   }
@@ -222,7 +248,7 @@ function renderBranches() {
   if (preserveFocus) target.querySelector(`.branch-option[data-branch="${state.branch}"]`)?.focus({preventScroll: true});
 }
 async function selectBranch(branch) {
-  if (!state.detail) return;
+  if (!state.detail?.attention_available) return;
   branchAbort?.abort(); branchAbort = new AbortController();
   const signal = branchAbort.signal, requestID = ++state.branchRequest, key = state.key;
   state.branch = branch; state.heat = null; state.selectedTile = null; grid.clear(); queueDraw(); renderBranches();
@@ -302,7 +328,7 @@ function draw() {
     context.strokeRect(origin.x + x * scale, origin.y + y * scale, tileSize, tileSize);
   }
 }
-viewer.addHandler('open', () => { if (state.heat) $('viewer-message').hidden = true; $('magnification-controls').hidden = false; updateScale(); queueDraw(); });
+viewer.addHandler('open', () => { if (state.heat || state.detail && !state.detail.attention_available) $('viewer-message').hidden = true; $('magnification-controls').hidden = false; updateScale(); queueDraw(); });
 viewer.addHandler('open-failed', event => { message('Could not open the slide image', event.message || 'The slide image could not be read.', false, true); status('Slide image failed to load.', true); });
 for (const event of ['animation', 'resize', 'viewport-change']) viewer.addHandler(event, () => { queueDraw(); updateScale(); });
 new ResizeObserver(queueDraw).observe($('slide-viewer'));
@@ -320,7 +346,15 @@ new OpenSeadragon.MouseTracker({element: viewer.canvas, moveHandler(event) {
   tooltip.style.top = `${Math.max(8, Math.min(event.position.y + 14, viewer.container.clientHeight - tooltip.offsetHeight - 8))}px`;
 }, exitHandler() { $('tile-tooltip').hidden = true; }}).setTracking(true);
 $('search-input').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { state.offset = 0; searchSlides(); }, 220); });
-for (const id of ['organ-filter', 'site-filter']) $(id).addEventListener('change', () => { if (id === 'organ-filter') $('condition-filter').value = ''; state.offset = 0; searchSlides(); });
+for (const id of ['organ-filter', 'site-filter', 'stain-filter']) $(id).addEventListener('change', () => {
+  if (id === 'organ-filter') {
+    for (const filter of ['condition-filter', 'stain-filter']) {
+      $(filter).value = '';
+      $(filter).disabled = true;
+    }
+  }
+  state.offset = 0; searchSlides();
+});
 $('condition-filter').addEventListener('change', () => { state.offset = 0; searchSlides(true); });
 $('previous-page').addEventListener('click', () => { state.offset = Math.max(0, state.offset - 40); searchSlides(); });
 $('next-page').addEventListener('click', () => { state.offset += 40; searchSlides(); });
@@ -331,7 +365,27 @@ $('overlay-visible').addEventListener('change', () => { $('tile-tooltip').hidden
 $('export-button').addEventListener('click', () => { if (state.heat) location.href = `/api/slides/${encodeURIComponent(state.key)}/export/${state.branch}.csv`; });
 document.addEventListener('keydown', event => {
   if (event.target.closest('input, select, textarea, button, summary') || event.ctrlKey || event.metaKey || event.altKey) return;
-  if (event.key.toLowerCase() === 'h') { $('overlay-visible').checked = !$('overlay-visible').checked; $('tile-tooltip').hidden = true; queueDraw(); }
+  if (event.key.toLowerCase() === 'h' && !$('overlay-visible').disabled) { $('overlay-visible').checked = !$('overlay-visible').checked; $('tile-tooltip').hidden = true; queueDraw(); }
 });
 document.addEventListener('attention-slide', event => { if (event.detail !== state.key) loadSlide(event.detail); });
 searchSlides(true);
+
+document.addEventListener('attention-case', event => {
+  if (event.detail.key !== state.key) return;
+  const target = $('stain-preview-list'); target.replaceChildren();
+  const current = event.detail.slides.find(slide => slide.id === state.key);
+  const slides = current ? event.detail.slides.filter(slide => slide.organ === event.detail.organ && slide.stain !== current.stain) : [];
+  slides.sort((a, b) => a.stain === b.stain ? a.slide_id.localeCompare(b.slide_id) : a.stain === 'HE' ? -1 : b.stain === 'HE' ? 1 : a.stain.localeCompare(b.stain));
+  for (const slide of slides) {
+    const button = node('button', 'stain-preview'); button.type = 'button';
+    button.title = `${stainName(slide.stain)} · ${slide.slide_id}`;
+    button.setAttribute('aria-label', `Open ${stainName(slide.stain)} staining: ${slide.slide_id}`);
+    const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy';
+    image.src = `/api/slides/${encodeURIComponent(slide.id)}/thumbnail.jpg`;
+    image.addEventListener('error', () => { image.replaceWith(node('span', 'stain-preview-unavailable', 'Preview unavailable')); }, {once: true});
+    button.append(image, node('span', 'stain-preview-label', stainName(slide.stain)));
+    button.addEventListener('click', () => loadSlide(slide.id)); target.append(button);
+  }
+  $('stain-previews').hidden = !slides.length;
+  document.querySelector('.viewer-stage').classList.toggle('has-stain-previews', Boolean(slides.length));
+});

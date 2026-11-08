@@ -18,6 +18,7 @@ from bp26.attention.data import AttentionStore, load_catalog, percentiles
 from bp26.attention.graph import register_graph
 from bp26.attention.patient import PatientStore
 from bp26.attention.references import ReferenceFindings
+from bp26.inference.stains import detect_stain
 
 REPO = Path(__file__).resolve().parents[3]
 UI = REPO / "notebooks/attention-viewer"
@@ -85,13 +86,17 @@ def image_response(image):
 def create_app(config, catalog=None):
     app = Flask(__name__, static_folder=None)
     catalog = load_catalog(config) if catalog is None else catalog
+    if "stain" not in catalog:
+        catalog = catalog.assign(
+            stain=catalog.slide_id.map(lambda value: detect_stain(value) or "HE")
+        )
     slides, attention = SlideCache(config, catalog), AttentionStore(config, catalog)
     app.extensions["attention_store"] = attention
     references = ReferenceFindings(config)
     app.extensions["reference_findings"] = references
     patients = PatientStore(config, catalog)
     app.extensions["patient_store"] = patients
-    register_graph(app, config, catalog)
+    register_graph(app, config, catalog.loc[catalog.stain.eq("HE")])
 
     def row_for(key):
         if key not in catalog.index:
@@ -99,7 +104,9 @@ def create_app(config, catalog=None):
         return catalog.loc[key]
 
     def result_for(key):
-        row_for(key)
+        row = row_for(key)
+        if row.stain != "HE":
+            abort(404, description="Attention is unavailable for non-H&E slides")
         with slides.lock:
             dimensions = slides.get(key)[0].dimensions
         return attention.get(key, dimensions)
@@ -143,9 +150,14 @@ def create_app(config, catalog=None):
             frame = frame.loc[frame.organ.eq(organ)]
         if site:
             frame = frame.loc[frame.site.eq(site)]
+        stain = request.args.get("stain", "")
+        if stain:
+            frame = frame.loc[frame.stain.eq(stain)]
         condition_index = references.condition_index(catalog, config.get("models_root"))
         counts = Counter(label for key in frame.index for label in condition_index[key])
-        conditions = [dict(value=label, count=count) for label, count in sorted(counts.items())]
+        organ_catalog = catalog.loc[catalog.organ.eq(organ)] if organ else catalog
+        available = sorted({label for key in organ_catalog.index for label in condition_index[key]})
+        conditions = [dict(value=label, count=counts[label]) for label in available]
         condition = request.args.get("condition", "")
         if condition:
             frame = frame.loc[[condition in condition_index[key] for key in frame.index]]
@@ -157,20 +169,22 @@ def create_app(config, catalog=None):
             total=len(frame),
             total_available=len(catalog),
             conditions=conditions,
+            stains=sorted(organ_catalog.stain.unique().tolist()),
             offset=offset,
             sites=sorted(catalog.site.unique().tolist()),
             slides=frame.iloc[offset : offset + 40][
-                ["id", "slide_id", "organ", "site", "case_id"]
+                ["id", "slide_id", "organ", "site", "case_id", "stain"]
             ].to_dict("records"),
         )
 
     @app.get("/api/slides/<key>")
     def detail(key):
         row = row_for(key)
-        result = result_for(key)
+        result = result_for(key) if row.stain == "HE" else None
         with slides.lock:
             slide = slides.get(key)[0]
             properties = slide.properties
+            dimensions = list(slide.dimensions)
 
         def positive_float(value):
             try:
@@ -179,9 +193,31 @@ def create_app(config, catalog=None):
             except ValueError, TypeError:
                 return None
 
-        reference = references.get(row, result["labels"], result["checkpoint"]["checkpoint"])
+        reference = (
+            references.get(row, result["labels"], result["checkpoint"]["checkpoint"])
+            if result is not None
+            else references.get_registry(row)
+        )
+        if result is None:
+            return jsonify(
+                id=key,
+                slide_id=row.slide_id,
+                organ=row.organ,
+                site=row.site,
+                case_id=row.case_id,
+                stain=row.stain,
+                attention_available=False,
+                dimensions=dimensions,
+                n_tiles=0,
+                branches=[],
+                reference=reference,
+                objective=positive_float(properties.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER)),
+                mpp_x=positive_float(properties.get(openslide.PROPERTY_NAME_MPP_X)),
+            )
         return jsonify(
             id=key,
+            stain=row.stain,
+            attention_available=True,
             slide_id=row.slide_id,
             organ=row.organ,
             site=row.site,
@@ -286,6 +322,13 @@ def create_app(config, catalog=None):
             coords = tuple(map(int, result["coords"][tile]))
             image = slide.read_region(coords, level, (edge, edge)).convert("RGB")
         image.thumbnail((224, 224))
+        return image_response(image)
+
+    @app.get("/api/slides/<key>/thumbnail.jpg")
+    def thumbnail(key):
+        row_for(key)
+        with slides.lock:
+            image = slides.get(key)[0].get_thumbnail((176, 128))
         return image_response(image)
 
     @app.get("/dzi/<key>.dzi")

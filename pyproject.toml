@@ -29,10 +29,8 @@ lint-fix = { cmd = "ruff check --fix .", description = "Apply safe automatic lin
 format = { cmd = "ruff format .", description = "Format Python code." }
 format-check = { cmd = "ruff format --check .", description = "Check formatting without changes." }
 check = { depends-on = ["lint", "format-check"], description = "Run lint and formatting checks." }
-# Extra flags are passed through, e.g. `pixi run viewer --rescan` after new slides arrive.
-viewer = { cmd = "python notebooks/svs-viewer/app.py", description = "Start the read-only SVS viewer (settings in notebooks/svs-viewer/configs/svs_viewer.toml)." }
 
-attention-viewer = { cmd = "python notebooks/attention-viewer/app.py", description = "Explore Virchow2 CLAM-MB branch attention on whole slides." }
+viewer = { cmd = "python notebooks/attention-viewer/app.py", description = "Explore Virchow2 CLAM-MB on whole slides." }
 
 inference = { cmd = "python scripts/inference/predict.py", description = "Score Virchow2 bags with the stored lung/liver champion weights." }
 inference-test = { cmd = "python -m unittest discover -s tests -p test_inference.py", description = "Check checkpoint loading and inference." }
@@ -66,3 +64,18 @@ select = [
     "I",               # Consistent import sorting
     "B",               # Additional checks for common programming mistakes
 ]
+
+# GPU pooling is isolated from the viewer environment.
+[tool.pixi.feature.pooling-gpu.system-requirements]
+cuda = "12"
+
+[tool.pixi.feature.pooling-gpu.dependencies]
+python = "3.14.*"
+pytorch-gpu = "2.10.0.*"
+cuda-version = "12.9.*"
+numpy = ">=2,<3"
+pandas = ">=3,<4"
+h5py = ">=3,<4"
+
+[tool.pixi.environments]
+pooling-gpu = { features = ["pooling-gpu"], no-default-feature = true }

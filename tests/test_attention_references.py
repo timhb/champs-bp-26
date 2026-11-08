@@ -96,7 +96,7 @@ class ReferenceTests(unittest.TestCase):
         self.assertEqual(result["states"]["finding_a"], "conflicting")
         self.assertEqual(result["findings"], [])
 
-    def test_condition_index_matches_displayed_references(self):
+    def test_condition_index_includes_registry_findings_beyond_model_heads(self):
         directory = (
             self.root / "models/focus17_lung_virchow2_clam_mb_multilabel/fold0/job_1/artifacts"
         )
@@ -151,12 +151,16 @@ class ReferenceTests(unittest.TestCase):
         registry.to_parquet(self.registry)
         references = ReferenceFindings(self.config)
         indexed = references.condition_index(catalog, self.root / "models")
-        self.assertEqual(indexed["primary"], frozenset({"finding_a"}))
+        self.assertEqual(indexed["primary"], frozenset({"finding_a", "other_finding"}))
         self.assertNotIn("finding_b", indexed["primary"])
-        self.assertEqual(indexed["fallback"], frozenset({"finding_a"}))
-        self.assertNotIn("unpredicted_condition", indexed["fallback"])
+        self.assertEqual(indexed["fallback"], frozenset({"finding_a", "unpredicted_condition"}))
         self.assertEqual(indexed["masked"], frozenset())
         displayed = references.get(
             self.row, ["finding_a", "finding_b"], directory.parent / "checkpoints/best.ckpt"
         )
-        self.assertEqual(indexed["primary"], frozenset(displayed["findings"]))
+        self.assertTrue(set(displayed["findings"]).issubset(indexed["primary"]))
+
+    def test_condition_index_works_without_champion_models(self):
+        catalog = pd.DataFrame([vars(self.row) | dict(id="slide")])
+        indexed = ReferenceFindings(self.config).condition_index(catalog, None)
+        self.assertEqual(indexed["slide"], frozenset({"finding_b", "other_finding"}))

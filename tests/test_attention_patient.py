@@ -162,3 +162,26 @@ class PatientTests(unittest.TestCase):
             self.assertFalse(response.get_json()["ready"])
             self.assertEqual(client.get("/api/slides/unknown/case").status_code, 404)
             get.assert_called_once()
+
+    def test_patient_slides_include_stain_and_preserve_patient_organ_scope(self):
+        rows = [
+            vars(self.row),
+            vars(self.row) | dict(id="gram", slide_id="slide_GM"),
+            vars(self.row) | dict(id="liver", organ="liver", slide_id="liver_PAS"),
+            vars(self.row)
+            | dict(id="other", wsi_path="/data/Site/Cases/OTHER/other_GM.svs", slide_id="other_GM"),
+        ]
+        store = self.store()
+        store.catalog = pd.DataFrame(rows)
+        with patch("bp26.attention.patient.load_backend", return_value=self.backend):
+            store._load()
+        result = store.get(self.row)
+        self.assertEqual(
+            {slide["id"] for slide in result["available_slides"]}, {"slide1", "gram", "liver"}
+        )
+        same_organ = [
+            slide
+            for slide in result["available_slides"]
+            if slide["organ"] == result["context"]["canonical"]
+        ]
+        self.assertEqual({slide["stain"] for slide in same_organ}, {"HE", "GRAM"})
