@@ -21,6 +21,7 @@ Run CPU work on an interactive node and GPU jobs through Slurm ([guide](docs/gui
 | --- | --- |
 | `pixi run svs-viewer` | Slide browser with case data, disease map and data-link diagram on port 8765 |
 | `pixi run attention-viewer` | CLAM-MB attention heatmaps, slide graph and cluster associations on port 8766 |
+| `pixi run eda-report` | EDA report PDF built from both running viewers (`outputs/eda-report/`) |
 | `pixi run inference` | Score Virchow2 bags with the stored lung/liver champion weights |
 | `pixi run check` | Lint and format checks |
 
@@ -45,13 +46,13 @@ so ~1 h for the 11k liver slides, ~3 h with lung. The graph shows liver only, so
 manifest suffices. Use `--limit` with a separate `--out` for a smoke test.
 
 **Headless browser.** `bp26.browser.chromium()` launches Chromium for screenshots, PDFs and UI
-checks on the cluster nodes.
+checks on the cluster nodes (see [eda_report.py](src/bp26/eda_report.py) for an example).
 
 ## Layout
 
 | Path | Contents |
 | --- | --- |
-| `src/bp26/` | Package code: `attention/` viewer backend, `inference/` CLAM pipeline |
+| `src/bp26/` | Package code: `attention/` viewer backend, `inference/` CLAM pipeline, EDA report |
 | `notebooks/` | Viewer front ends (`svs-viewer/` also holds its Python backend and tests) |
 | `configs/` | Run and viewer settings |
 | `scripts/` | Entry points and Slurm batch scripts |

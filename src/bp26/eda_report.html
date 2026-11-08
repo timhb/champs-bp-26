@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CHAMPS EDA report</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  :root { --ink: #0b0b0b; --ink-2: #52514e; --line: #e2e1dc; --bar: #2a78d6; --surface: #fcfcfb; }
+  body { font: 9.5pt/1.4 "Inter", system-ui, sans-serif; color: var(--ink); background: #fff; margin: 0; }
+  h1 { font-size: 18pt; margin: 0 0 2pt; letter-spacing: -0.01em; }
+  h2 { font-size: 11.5pt; margin: 14pt 0 4pt; padding-bottom: 2pt; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 9.5pt; margin: 8pt 0 3pt; color: var(--ink-2); font-weight: 600; }
+  p, li { margin: 3pt 0; }
+  ul { padding-left: 14pt; margin: 4pt 0; }
+  .meta { color: var(--ink-2); font-size: 8.5pt; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6pt; margin: 10pt 0 4pt; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6pt 8pt; }
+  .kpi b { display: block; font-size: 15pt; font-variant-numeric: tabular-nums; }
+  .kpi span { color: var(--ink-2); font-size: 8pt; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4pt 18pt; }
+  .bars { display: grid; gap: 2pt; }
+  .bar { display: grid; grid-template-columns: 34% 1fr 36pt 20pt; align-items: center; column-gap: 5pt; font-size: 8.5pt; }
+  .wide .bar { grid-template-columns: 30% 1fr 36pt 20pt; }
+  .bar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar i { display: block; height: 8pt; background: var(--bar); border-radius: 0 3px 3px 0; min-width: 1px; }
+  .bar b { font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; }
+  .bar small { color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
+  figure { margin: 6pt 0; break-inside: avoid; }
+  figure.map { width: 72%; margin: 10pt auto 0; }
+  figure img { width: 100%; border: 1px solid var(--line); border-radius: 4px; }
+  figcaption { color: var(--ink-2); font-size: 8pt; margin-top: 2pt; }
+  table { border-collapse: collapse; width: 100%; font-size: 8.5pt; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 3pt 6pt; border-bottom: 1px solid var(--line); }
+  th { color: var(--ink-2); font-weight: 600; }
+  .page { break-before: page; }
+  :root { --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+    --s7: #6250d6; --s8: #e34948; --other: #a9a6ae; }
+  .legend { display: flex; flex-wrap: wrap; gap: 2pt 10pt; font-size: 8pt; margin: 2pt 0 6pt; }
+  .legend i { display: inline-block; width: 7pt; height: 7pt; border-radius: 2px; margin-right: 3pt; vertical-align: -0.5pt; }
+  .stack { display: grid; grid-template-columns: 22% 1fr; align-items: center; column-gap: 6pt; font-size: 8.5pt; margin: 2pt 0; }
+  .stack small { color: var(--ink-2); }
+  .stack div { display: flex; gap: 1.5px; height: 10pt; border-radius: 3px; overflow: hidden; }
+  .note { background: var(--surface); border-left: 3px solid var(--line); padding: 4pt 8pt; margin: 6pt 0; }
+</style>
+</head>
+<body>
+<h1>CHAMPS slides: exploratory data analysis</h1>
+<div class="meta">Generated $date from repository revision $revision with <code>pixi run eda-report</code>.
+  All numbers are descriptive counts of the shared dataset; no model was evaluated.</div>
+
+<div class="kpis">
+  <div class="kpi"><b>$slides</b><span>whole-slide images</span></div>
+  <div class="kpi"><b>$cases</b><span>cases</span></div>
+  <div class="kpi"><b>$n_sites</b><span>sites</span></div>
+  <div class="kpi"><b>$svs_linked_pct%</b><span>SVS slides linked to case data</span></div>
+</div>
+
+<div class="note"><b>Key observations</b><ul>$observations</ul></div>
+
+<h2>1 · Slide inventory</h2>
+<p>The shared WSI inventory lists $slides slides from $cases cases ($probe_errors with a probe error).
+  The SVS viewer covers the $svs <code>.svs</code> slides ($svs_cases cases); $svs_linked of them
+  link to case-level tables through the study-ID mapping.</p>
+<div class="grid">
+  <div><h3>Slides by site</h3>$sites</div>
+  <div><h3>File format</h3>$formats<h3>Objective power</h3>$power</div>
+  <div><h3>SVS slides by stain (filename)</h3>$stains</div>
+  <div><h3>SVS slides by organ (slide registry)</h3>$organs</div>
+</div>
+<div class="note"><b>Stain labels.</b> Most site <code>.ndpi</code> slides carry no stain in the filename or
+  metadata. A colour-feature classifier was explored (issue #5, single run) but could not separate
+  special stains from H&amp;E, so the pipeline now treats slides without a stain token as H&amp;E
+  (<code>bp26.inference.stains</code>). This is an assumption, not a measured label.</div>
+
+<h2 class="page">2 · Causes of death</h2>
+<p>Underlying cause of death (DeCoDe) for $causes_n cases across $causes_sites sites,
+  grouped into $causes_k categories. Shares are of all cases with a DeCoDe result.</p>
+<h3>Top underlying causes</h3>
+<div class="wide">$causes</div>
+<h3>Mix of underlying causes per site (cases)</h3>
+$mix
+<figure class="map"><img src="map-circles.png" alt="Map with one circle per site"><figcaption>Disease map
+  (SVS viewer): circle area is the site's share of all cases with a DeCoDe result.</figcaption></figure>
+
+<h2 class="page">3 · Slide embeddings</h2>
+<p>$organ_slides $organ H&amp;E slides embedded by the Virchow2 CLAM-MB model (finding branch
+  “$branch”), projected with $projection and clustered with $method into $n_clusters clusters.
+  Associations are computed per patient ($patients patients; dominant cluster per patient).</p>
+<div class="grid">
+  <figure><img src="graph-cluster.png" alt="Embedding coloured by cluster"><figcaption>Coloured by $method cluster.</figcaption></figure>
+  <figure><img src="graph-site.png" alt="Embedding coloured by site"><figcaption>Coloured by site.</figcaption></figure>
+</div>
+<h3>Cluster–property associations (95% patient bootstrap intervals)</h3>
+<table><thead><tr><th>Property</th><th>Metric</th><th>Effect</th><th>AMI</th><th>Patients with value</th></tr></thead>
+  <tbody>$associations</tbody></table>
+<p class="meta">Embeddings come from a supervised model and include its training slides, so clusters reflect
+  what that model learned, not held-out structure. Associations are descriptive, not causal.</p>
+</body>
+</html>

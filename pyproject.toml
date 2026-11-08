@@ -32,6 +32,7 @@ check = { depends-on = ["lint", "format-check"], description = "Run lint and for
 
 svs-viewer = { cmd = "python notebooks/svs-viewer/app.py", description = "Browse slides with case data, disease map and data links (port 8765)." }
 attention-viewer = { cmd = "python notebooks/attention-viewer/app.py", description = "Explore Virchow2 CLAM-MB attention and the slide graph (port 8766)." }
+eda-report = { cmd = "python -m bp26.eda_report", description = "Render the EDA report PDF from both running viewers." }
 
 inference = { cmd = "python scripts/inference/predict.py", description = "Score Virchow2 bags with the stored lung/liver champion weights." }
 inference-test = { cmd = "python -m unittest discover -s tests -p test_inference.py", description = "Check checkpoint loading and inference." }
