@@ -39,7 +39,7 @@ for installer details.
 Go into the root directory of the repository. Adjust the path if it is elsewhere:
 
 ```bash
-cd bp2026cl1
+cd champs-bp-26
 pixi install --locked
 ```
 
