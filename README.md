@@ -1,4 +1,4 @@
-# bp2026cl1
+# champs-bp-26
 
 ## Project structure
 
