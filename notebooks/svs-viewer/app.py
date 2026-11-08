@@ -1,4 +1,4 @@
-"""Read-only SVS whole-slide image browser. Start with `pixi run viewer`.
+"""Read-only SVS whole-slide image browser. Start with `pixi run svs-viewer`.
 
 Only *reads* .svs files under data_root (notebooks/svs-viewer/configs/svs_viewer.toml). Nothing in data_root is
 ever written, moved or deleted. The viewer writes only its slide index cache under the

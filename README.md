@@ -1,63 +1,65 @@
 # champs-bp-26
 
-## Project structure
+Exploration and modelling of CHAMPS MITS pathology slides (whole-slide images plus case data).
+The dataset lives on the read-only share `/sc/projects/sci-lippert/champs`; nothing from it is
+committed.
 
-Path | Purpose |
-| --- | --- |
-| [configs/](configs/) | Experiment settings, model parameters, and training configurations. |
-| [data/](data/) | Local datasets and derived data. |
-| [docs/](docs/) | Research plans, experiment records, project decisions, and practical guides. |
-| [notebooks/](notebooks/) | Exploratory analysis and interactive visualizations. |
-| [outputs/](outputs/) | Generated results, figures, logs, and model artifacts. |
-| [scripts/](scripts/) | Commands and helper scripts for running project workflows. |
-| [src/](src/) | Reusable Python source code. |
-| [tests/](tests/) | Automated checks of code behavior and research-critical assumptions. |
+## Setup
 
-
-## Environment and development
-
-We use **Pixi** ✨ to manage dependencies and run project commands.
-
-### Setup
-
-This project targets **Linux**. If you have not installed or used Pixi before,
-start with the [Pixi guide for Linux](docs/guides/pixi.md). It covers installation,
-environment setup, daily commands, dependency changes, and cluster cache warnings.
-
-### Dependency changes
-
-- Document each dependency's purpose in [docs/dependencies.md](docs/dependencies.md).
-- Keep conventions current in [docs/rules.md](docs/rules.md).
-
-## Training environment
-
-Our usual training hardware is **NVIDIA A100**.
-
-Use **CPU** nodes for environment setup, coding and CPU-compatible tasks.
-Run **GPU** training on an allocated A100 node using the cluster's job workflow. For larger jobs, consider running these as a batch job.
-
-To avoid duplicate runs, check [docs/experiments.md](docs/experiments.md) before
-starting an experiment and the run you perform. Include your name,
-the configuration used, results (e.g. AUROC, F1, accuracy), GPU model/count,
-and runtime.
-
-## Dataset
-
-We use **CHAMPS MITS pathology samples**. Keep dataset files outside Git and
-document access/setup instructions without including credentials.
-
-## SVS viewer
-
-A read-only browser for the CHAMPS slides and their case data (lab, TAC, cause of death,
-CPL reports), with a disease map and a diagram of how the tables link. It lives in
-[notebooks/svs-viewer/](notebooks/svs-viewer/) and never writes to the dataset share.
+Linux only. Install Pixi ([guide](docs/guides/pixi.md)), then from the repository root:
 
 ```bash
-pixi run viewer            # serves http://127.0.0.1:8765
-pixi run viewer --rescan   # re-scan the slide folder after new slides arrive
+pixi install --locked
+pixi run playwright install chromium   # headless browser for screenshots and PDFs (once per user)
 ```
 
-Run it on a compute node and forward port 8765 (e.g. via VS Code's Ports panel). Paths and
-the port are set in [notebooks/svs-viewer/configs/svs_viewer.toml](notebooks/svs-viewer/configs/svs_viewer.toml). The first start scans
-the slide folder and caches the list in `data/processed/svs-viewer/` (gitignored); case
-tables take about 20 seconds to load.
+Run CPU work on an interactive node and GPU jobs through Slurm ([guide](docs/guides/slurm.md)).
+
+## Tools
+
+| Command | What it does |
+| --- | --- |
+| `pixi run svs-viewer` | Slide browser with case data, disease map and data-link diagram on port 8765 |
+| `pixi run attention-viewer` | CLAM-MB attention heatmaps, slide graph and cluster associations on port 8766 |
+| `pixi run inference` | Score Virchow2 bags with the stored lung/liver champion weights |
+| `pixi run check` | Lint and format checks |
+
+Both viewers bind to localhost; reach them through port forwarding (e.g. the VS Code Ports panel).
+
+**SVS viewer.** Settings: [svs_viewer.toml](notebooks/svs-viewer/configs/svs_viewer.toml). The
+first start scans the share and caches the slide list in `data/processed/svs-viewer/`
+(roughly 10–15 min); later starts are instant. Pass `--rescan` after new slides arrive. Case
+tables load about 20 s after start.
+
+**Attention viewer.** Settings: [attention-viewer.toml](configs/attention-viewer.toml). It
+needs a slide manifest and, for the graph page, a CLAM-MB embedding export:
+
+```bash
+pixi run python scripts/inference/build_manifest.py --out data/inference/slides.csv
+pixi run python scripts/inference/pool_clam_embeddings.py --manifest data/inference/slides.csv \
+    --out outputs/clam-mb --read-workers 16
+```
+
+The export is I/O-bound: about 0.3 s per slide with 16 read workers on 4 CPUs (single run),
+so ~1 h for the 11k liver slides, ~3 h with lung. The graph shows liver only, so a liver-only
+manifest suffices. Use `--limit` with a separate `--out` for a smoke test.
+
+**Headless browser.** `bp26.browser.chromium()` launches Chromium for screenshots, PDFs and UI
+checks on the cluster nodes.
+
+## Layout
+
+| Path | Contents |
+| --- | --- |
+| `src/bp26/` | Package code: `attention/` viewer backend, `inference/` CLAM pipeline |
+| `notebooks/` | Viewer front ends (`svs-viewer/` also holds its Python backend and tests) |
+| `configs/` | Run and viewer settings |
+| `scripts/` | Entry points and Slurm batch scripts |
+| `tests/` | Tests for `src/bp26/` |
+| `data/`, `outputs/`, `logs/` | Local, gitignored |
+
+## Docs
+
+- [Rules](docs/rules.md): conventions for code, data and collaboration
+- [Experiments](docs/experiments.md): log of reported runs (check it before starting one)
+- [Dependencies](docs/dependencies.md): why each package is here
