@@ -63,4 +63,5 @@ checks on the cluster nodes (see [eda_report.py](src/bp26/eda_report.py) for an 
 
 - [Rules](docs/rules.md): conventions for code, data and collaboration
 - [Experiments](docs/experiments.md): log of reported runs (check it before starting one)
+- [EDA report](docs/eda-report.pdf): slide inventory, causes of death and embedding clusters (#8)
 - [Dependencies](docs/dependencies.md): why each package is here
