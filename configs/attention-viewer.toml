@@ -1,4 +1,5 @@
-# Run with pixi run attention-viewer; use SSH port forwarding from your browser.
+# Run with `pixi run attention-viewer`; use SSH port forwarding from your browser.
+# Inputs: see "Attention viewer" in README.md.
 host = "127.0.0.1"
 port = 8766
 data_root = "/sc/projects/sci-lippert/champs"
@@ -11,7 +12,7 @@ open_slide_cache_size = 4
 cpu_threads = 4
 
 [graph]
-embeddings_root = "../champs-mits-histopathology/embeddings/all_clam_mb"
+embeddings_root = "outputs/clam-mb"
 cache_root = "outputs/attention-graph"
 default_organ = "liver"
 organs = ["liver"]

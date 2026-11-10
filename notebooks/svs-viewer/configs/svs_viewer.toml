@@ -1,4 +1,4 @@
-# Settings for the read-only SVS viewer (notebooks/svs-viewer). Start it with `pixi run viewer`.
+# Settings for the read-only SVS viewer (notebooks/svs-viewer). Start it with `pixi run svs-viewer`.
 
 # CHAMPS project share. The viewer only reads from here and never writes, moves or deletes.
 data_root = "/sc/projects/sci-lippert/champs"

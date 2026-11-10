@@ -1,76 +1,50 @@
-# Using Slurm on the cluster - DISCLAIMER: WIP SLOP
+# Slurm
 
-Always pass our project account: `-A sci-lippert-bp2026cl1`.
+Always pass the project account `-A sci-lippert-bp2026cl1`.
 
-## Partitions
+| Partition | Use | Limit | GPU types (`--gres=gpu:TYPE:N`) |
+| --- | --- | --- | --- |
+| `pot-hpi-cpu-interactive` (default) | CPU shell, setup, checks | 8 h | — |
+| `pot-hpi-cpu-batch` | CPU batch jobs | 7 d | — |
+| `pot-hpi-gpu-interactive` | GPU shell, debugging | 8 h | `a100`, `a40`, `gh200`, `2080_ti` |
+| `pot-hpi-gpu-shortrun` | Quick GPU tests | 1 h | `a100`, `b200`, `rtx_pro_6000` |
+| `pot-hpi-gpu-batch` | Training | 7 d | `a100`, `b200`, `rtx_pro_6000`, `gh200` |
 
-| Partition | Use | Time limit |
-| --- | --- | --- |
-| `pot-hpi-cpu-interactive` (default) | CPU shell, setup, checks | 8 h |
-| `pot-hpi-cpu-batch` | CPU batch jobs | 7 days |
-| `pot-hpi-gpu-interactive` | GPU shell, debugging | 8 h |
-| `pot-hpi-gpu-shortrun` | Quick GPU tests | 1 h |
-| `pot-hpi-gpu-batch` | GPU training | 7 days |
+Check live availability with `sinfo -s` or `sinfo -p PARTITION -o "%n %G %c %m %t"`.
 
-GPU types (`--gres=gpu:TYPE:N`): `a100`, `h100`, `b200`, `a40`, `l40`, `a30`, `rtx_pro_6000`.
-Not every partition has every type; check with `sinfo` below.
-
-## Check available resources
-
-```bash
-sinfo -s                                   # partitions and node states (A/I/O/T = allocated/idle/other/total)
-sinfo -p pot-hpi-gpu-batch -o "%n %G %c %m %t"   # per-node GPUs, CPUs, memory (MB), state
-squeue -p pot-hpi-gpu-batch                # who is queued/running
-```
-
-## Reserve an interactive node
+## Interactive node
 
 ```bash
 srun -A sci-lippert-bp2026cl1 -p pot-hpi-gpu-interactive \
-     --gres=gpu:a100:1 --cpus-per-task=8 --mem=64G --time=02:00:00 \
-     --pty bash
+     --gres=gpu:a100:1 --cpus-per-task=8 --mem=64G --time=02:00:00 --pty bash
 ```
 
-| Flag | Meaning |
-| --- | --- |
-| `--time=HH:MM:SS` | Runtime; job is killed afterwards. Shorter jobs start sooner. |
-| `--gres=gpu:a100:2` | GPU type and count. |
-| `--cpus-per-task=8` | CPU cores. |
-| `--mem=64G` | RAM per node. Default is only 1.5 GB per CPU. |
+Default memory is only 1.5 GB per CPU, so set `--mem`. Shorter `--time` starts sooner. Exit
+the shell to release the node.
 
-Exit the shell to release the node.
-
-## Submit a batch job
-
-`scripts/train.sbatch`:
+## Batch job
 
 ```bash
 #!/bin/bash
 #SBATCH -A sci-lippert-bp2026cl1
 #SBATCH -p pot-hpi-gpu-batch
-#SBATCH --job-name=train
+#SBATCH --job-name=NAME
 #SBATCH --gres=gpu:a100:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00
-#SBATCH --output=logs/%x-%j.out   # %x = job name, %j = job id
+#SBATCH --output=logs/%x-%j.out   # %x job name, %j job id
 
-pixi run python -m bp26.train
+pixi run --frozen python -m bp26.MODULE
 ```
 
-```bash
-mkdir -p logs
-sbatch scripts/train.sbatch
-```
+Submit from the repository root with `mkdir -p logs && sbatch SCRIPT`. The default environment
+has CPU-only PyTorch; GPU code runs in the `pooling-gpu` environment (`pixi run -e pooling-gpu`).
 
-## Monitor jobs
-
-```bash
-squeue --me                       # your jobs (PD = pending, R = running)
-tail -f logs/train-<jobid>.out    # live output
-scontrol show job <jobid>         # details, incl. why it is pending
-sacct -j <jobid> --format=JobID,State,Elapsed,MaxRSS   # after it finished
-scancel <jobid>                   # cancel
-```
-
-On a running GPU node: `srun --jobid=<jobid> --overlap nvidia-smi`.
+| Command | Purpose |
+| --- | --- |
+| `squeue --me` | Your jobs (PD pending, R running) |
+| `scontrol show job ID` | Details, including why a job is pending |
+| `sacct -j ID --format=JobID,State,Elapsed,MaxRSS` | Finished job stats |
+| `srun --jobid=ID --overlap nvidia-smi` | GPU use of a running job |
+| `scancel ID` | Cancel |
