@@ -12,20 +12,18 @@ import pandas as pd
 import torch
 
 from bp26.inference.champion import load_model
-from bp26.inference.manifest import build_manifest
+from bp26.inference.manifest import ensure_manifest
 from bp26.inference.stains import detect_stain
 
 
 def load_catalog(config):
     """Keep H&E inference inputs and add other stains as image-only slides."""
     manifest = Path(config["manifest"])
-    if manifest.is_file():
-        frame = pd.read_csv(manifest, keep_default_na=False, dtype=str)
-        frame["path"] = frame.path.map(
-            lambda value: str(Path(value) if Path(value).is_absolute() else manifest.parent / value)
-        )
-    else:
-        frame = build_manifest(config["feature_index"], config["slide_registry"])
+    ensure_manifest(manifest, config["feature_index"], config["slide_registry"])
+    frame = pd.read_csv(manifest, keep_default_na=False, dtype=str)
+    frame["path"] = frame.path.map(
+        lambda value: str(Path(value) if Path(value).is_absolute() else manifest.parent / value)
+    )
     if frame.empty or not set(frame.organ).issubset({"lung", "liver"}):
         raise ValueError("Manifest must contain lung/liver slides")
     if frame.duplicated(["organ", "slide_id"]).any():

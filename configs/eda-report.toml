@@ -1,0 +1,12 @@
+# EDA report (ticket #8). Start both viewers first, then run `pixi run eda-report`.
+svs_viewer = "http://127.0.0.1:8765"
+attention_viewer = "http://127.0.0.1:8766"
+inventory = "/sc/projects/sci-lippert/champs/manifest/wsi_inventory.csv"
+out_dir = "outputs/eda-report"
+
+# Embedding section: attention viewer graph settings (Leiden uses the viewer's defaults).
+organ = "liver"
+branch = 0
+projection = "umap"
+cluster_method = "leiden"
+top_diseases = 10

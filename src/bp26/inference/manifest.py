@@ -36,6 +36,49 @@ def build_manifest(index_path, registry_path):
     return result[["organ", "slide_id", "path"]].sort_values(["organ", "slide_id"])
 
 
+def write_manifest(out, index, registry):
+    """Write the manifest with absolute feature paths and a record of its input hashes."""
+    out, index, registry = Path(out), Path(index), Path(registry)
+    frame = build_manifest(index, registry)
+    # Resolve source-relative paths before writing a manifest in another directory.
+    frame["path"] = frame.path.map(
+        lambda value: str(
+            Path(value) if Path(value).is_absolute() else index.resolve().parent / value
+        )
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(out, index=False)
+    record = {
+        "feature_index": str(index),
+        "feature_index_sha256": sha256(index),
+        "registry": str(registry),
+        "registry_sha256": sha256(registry),
+        "manifest_sha256": sha256(out),
+        "slides_by_organ": frame.organ.value_counts().to_dict(),
+        "selection": "Newest non-refused 20x 224px Virchow2 features; H&E name filter; no identifier conflicts; registry lung/liver organs",
+    }
+    out.with_suffix(".json").write_text(json.dumps(record, indent=2) + "\n")
+    return record
+
+
+def ensure_manifest(out, index, registry):
+    """Build a missing manifest; rebuild one whose recorded input hashes no longer match.
+
+    A manifest without a record is hand-made and left untouched.
+    """
+    out = Path(out)
+    record_path = out.with_suffix(".json")
+    if out.is_file():
+        if not record_path.is_file():
+            return
+        record = json.loads(record_path.read_text())
+        if record["feature_index_sha256"] == sha256(index) and record["registry_sha256"] == sha256(
+            registry
+        ):
+            return
+    write_manifest(out, index, registry)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path)
@@ -44,25 +87,9 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     config = settings(args.config)
-    index = args.feature_index or Path(config["feature_index"])
-    registry = args.registry or Path(config["slide_registry"])
-    frame = build_manifest(index, registry)
-    # Resolve source-relative paths before writing a manifest in another directory.
-    frame["path"] = frame.path.map(
-        lambda value: str(
-            Path(value) if Path(value).is_absolute() else index.resolve().parent / value
-        )
+    record = write_manifest(
+        args.out,
+        args.feature_index or config["feature_index"],
+        args.registry or config["slide_registry"],
     )
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_csv(args.out, index=False)
-    record = {
-        "feature_index": str(index),
-        "feature_index_sha256": sha256(index),
-        "registry": str(registry),
-        "registry_sha256": sha256(registry),
-        "manifest_sha256": sha256(args.out),
-        "slides_by_organ": frame.organ.value_counts().to_dict(),
-        "selection": "Newest non-refused 20x 224px Virchow2 features; H&E name filter; no identifier conflicts; registry lung/liver organs",
-    }
-    args.out.with_suffix(".json").write_text(json.dumps(record, indent=2) + "\n")
     print(json.dumps({"manifest": str(args.out), "slides_by_organ": record["slides_by_organ"]}))

@@ -21,6 +21,7 @@ Run CPU work on an interactive node and GPU jobs through Slurm ([guide](docs/gui
 | --- | --- |
 | `pixi run svs-viewer` | Slide browser with case data, disease map and data-link diagram on port 8765 |
 | `pixi run attention-viewer` | CLAM-MB attention heatmaps, slide graph and cluster associations on port 8766 |
+| `pixi run eda-report` | EDA report PDF built from both running viewers (`outputs/eda-report/`) |
 | `pixi run inference` | Score Virchow2 bags with the stored lung/liver champion weights |
 | `pixi run check` | Lint and format checks |
 
@@ -31,11 +32,13 @@ first start scans the share and caches the slide list in `data/processed/svs-vie
 (roughly 10–15 min); later starts are instant. Pass `--rescan` after new slides arrive. Case
 tables load about 20 s after start.
 
-**Attention viewer.** Settings: [attention-viewer.toml](configs/attention-viewer.toml). It
-needs a slide manifest and, for the graph page, a CLAM-MB embedding export:
+**Attention viewer.** Settings: [attention-viewer.toml](configs/attention-viewer.toml). The
+first start joins the shared feature index with the slide labels into
+`data/inference/slides.csv`: one row per H&E lung/liver slide, pointing at its newest usable
+20x Virchow2 features (a few seconds). Later starts reuse it and rebuild only when an input file
+changes. The graph page also needs a CLAM-MB embedding export, run after that first start:
 
 ```bash
-pixi run python scripts/inference/build_manifest.py --out data/inference/slides.csv
 pixi run python scripts/inference/pool_clam_embeddings.py --manifest data/inference/slides.csv \
     --out outputs/clam-mb --read-workers 16
 ```
@@ -45,13 +48,13 @@ so ~1 h for the 11k liver slides, ~3 h with lung. The graph shows liver only, so
 manifest suffices. Use `--limit` with a separate `--out` for a smoke test.
 
 **Headless browser.** `bp26.browser.chromium()` launches Chromium for screenshots, PDFs and UI
-checks on the cluster nodes.
+checks on the cluster nodes (see [eda_report.py](src/bp26/eda_report.py) for an example).
 
 ## Layout
 
 | Path | Contents |
 | --- | --- |
-| `src/bp26/` | Package code: `attention/` viewer backend, `inference/` CLAM pipeline |
+| `src/bp26/` | Package code: `attention/` viewer backend, `inference/` CLAM pipeline, EDA report |
 | `notebooks/` | Viewer front ends (`svs-viewer/` also holds its Python backend and tests) |
 | `configs/` | Run and viewer settings |
 | `scripts/` | Entry points and Slurm batch scripts |
@@ -62,4 +65,5 @@ checks on the cluster nodes.
 
 - [Rules](docs/rules.md): conventions for code, data and collaboration
 - [Experiments](docs/experiments.md): log of reported runs (check it before starting one)
+- [EDA report](docs/eda-report.pdf): slide inventory, causes of death and embedding clusters (#8)
 - [Dependencies](docs/dependencies.md): why each package is here

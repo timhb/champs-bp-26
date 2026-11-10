@@ -12,7 +12,7 @@ import torch
 
 from bp26.inference.champion import load_model, pool
 from bp26.inference.clam import CLAM_MB
-from bp26.inference.manifest import build_manifest
+from bp26.inference.manifest import build_manifest, ensure_manifest
 from bp26.inference.predict import predict
 
 
@@ -147,3 +147,14 @@ class ChampionInferenceTests(unittest.TestCase):
         frame = build_manifest(index, registry)
         self.assertEqual(frame.organ.tolist(), ["liver", "lung"])
         self.assertEqual(frame.path.tolist(), ["liver.h5", "new.h5"])
+
+        out = self.root / "cache/slides.csv"
+        ensure_manifest(out, index, registry)
+        self.assertEqual(len(pd.read_csv(out)), 2)
+        out.write_text("kept")
+        ensure_manifest(out, index, registry)
+        self.assertEqual(out.read_text(), "kept")
+        with index.open("a") as stream:
+            stream.write("\n")
+        ensure_manifest(out, index, registry)
+        self.assertEqual(len(pd.read_csv(out)), 2)
