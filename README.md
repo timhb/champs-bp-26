@@ -32,11 +32,13 @@ first start scans the share and caches the slide list in `data/processed/svs-vie
 (roughly 10–15 min); later starts are instant. Pass `--rescan` after new slides arrive. Case
 tables load about 20 s after start.
 
-**Attention viewer.** Settings: [attention-viewer.toml](configs/attention-viewer.toml). It
-needs a slide manifest and, for the graph page, a CLAM-MB embedding export:
+**Attention viewer.** Settings: [attention-viewer.toml](configs/attention-viewer.toml). The
+first start joins the shared feature index with the slide labels into
+`data/inference/slides.csv`: one row per H&E lung/liver slide, pointing at its newest usable
+20x Virchow2 features (a few seconds). Later starts reuse it and rebuild only when an input file
+changes. The graph page also needs a CLAM-MB embedding export, run after that first start:
 
 ```bash
-pixi run python scripts/inference/build_manifest.py --out data/inference/slides.csv
 pixi run python scripts/inference/pool_clam_embeddings.py --manifest data/inference/slides.csv \
     --out outputs/clam-mb --read-workers 16
 ```
