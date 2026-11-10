@@ -24,5 +24,7 @@ Every direct dependency and why we need it. Versions live in `pixi.lock`.
 | py-opencv | Inference: native OpenCV libraries for Trident on the cluster |
 | trident | Inference: tissue segmentation, tiling and Virchow2 feature extraction (source pipeline revision) |
 | pypdf | SVS viewer: reads TAC assay names from the dataset description PDF |
+| playwright-python | Headless Chromium (`bp26.browser`) for screenshots, PDFs and UI checks |
+| atk-1.0, at-spi2-atk, at-spi2-core, libgbm | System libraries Chromium needs that the cluster nodes lack |
 
 The viewer pages also load OpenSeadragon 4.1.1, d3 7.9.0, topojson-client 3.1.0 and world-atlas 2.0.2 from pinned CDN URLs (not Pixi dependencies).

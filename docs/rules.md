@@ -7,6 +7,7 @@ Current conventions only. Edit in place; history lives in Git.
 - Pixi manages dependencies and tasks ([guide](guides/pixi.md)); Python is pinned to 3.14.
 - Add dependencies with `pixi add`, never by hand; list them in [dependencies.md](dependencies.md).
 - GPU work runs through Slurm ([guide](guides/slurm.md)).
+- Browser screenshots, PDFs and UI checks use `bp26.browser.chromium()` (once: `pixi run playwright install chromium`).
 
 ## Repository
 
